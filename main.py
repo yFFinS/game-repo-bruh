@@ -28,7 +28,7 @@ def main():
     move_right = False
 
     need_to_flip = False
-
+    move(player, 0, 0)
     while running: # главный цикл
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
