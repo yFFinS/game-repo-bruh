@@ -1,8 +1,10 @@
 from math import copysign
+from random import randint
 
 from entities import *
 
 pygame.init()
+pygame.display.set_caption('Game')
 size = WIDTH, HEIGHT
 SCREEN = pygame.display.set_mode(size)
 FPS = 144
@@ -17,6 +19,8 @@ def main():
 
     running = True
     paused = False
+    summon_timer = 50
+
     screen2 = pygame.Surface(size)
     player = Player(screen2, (WIDTH // 2, HEIGHT // 2))
 
@@ -62,22 +66,44 @@ def main():
                 if event.button == pygame.BUTTON_RIGHT:
                     delete_enemy(event.pos)
 
-        if paused:
-            continue
+        if not paused:
+            if move_left and move_right:
+                move_left = False
+                move_right = False
+            if move_down and move_up:
+                move_down = False
+                move_up = False
 
-        if move_up:
-            player.move(*DIRECTION_UP)
-        if move_down and not move_up:
-            player.move(*DIRECTION_DOWN)
-        if move_left:
-            player.move(*DIRECTION_LEFT)
-        if move_right and not move_left:
-            player.move(*DIRECTION_RIGHT)
+            if move_up:
+                player.move(*DIRECTION_UP)
+            if move_down:
+                player.move(*DIRECTION_DOWN)
+            if move_left:
+                player.move(*DIRECTION_LEFT)
+            if move_right:
+                player.move(*DIRECTION_RIGHT)
 
-        player.update()
-        for enemy in enemies:
-            enemy.update()
+            if summon_timer:
+                summon_timer -= 1
+            else:
+                w, h = randint(10, 30), randint(10, 30)
+                x, y = randint(0, WIDTH - w), randint(0, HEIGHT - h)
+                vel = randint(10, 100)
+                create_enemy((x, y), width=w, height=h, velocity=vel)
+                summon_timer = 50
+
+            player.update()
+            for enemy in enemies:
+                enemy.update(enemies)
+
+        else:
+            player.draw()
+            for enemy in enemies:
+                enemy.draw()
+        font = pygame.font.Font(None, 30)
+        fps = font.render('FPS: ' + str(int(clock.get_fps())), True, pygame.Color('green'))
         SCREEN.blit(screen2, (0, 0))
+        SCREEN.blit(fps, (10, 10))
         pygame.display.flip()
 
         clock.tick(FPS)
@@ -86,14 +112,10 @@ def main():
     pygame.quit()
 
 
-def create_enemy(pos, *args):
+def create_enemy(pos, **kwargs):
     global enemies, screen2
 
-    assert type(pos) is tuple, 'pos argument can be only tuple'
-
-    enemy = Enemy(screen2, pos)
-    enemy.set_velocity(40)
-    enemy.w, enemy.h = 10, 10
+    enemy = Enemy(screen2, pos, pygame.Color('red'), **kwargs)
     enemies.append(enemy)
 
 

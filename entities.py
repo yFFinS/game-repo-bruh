@@ -42,7 +42,7 @@ class Entity:
         self.update_hitbox()
         pygame.draw.rect(self.screen, self.color, self.hitbox)
 
-    def move(self, dx, dy, force_move=False):
+    def move(self, dx, dy, entities=(), force_move=False):
         x1, y1 = self.get_pos()
         velocity = self.get_velocity()
         w, h = self.w, self.h
@@ -52,7 +52,7 @@ class Entity:
         y2 = y1 + dy * velocity / FPS
 
         if not force_move:
-            if x2 + w > WIDTH or x2 < 0 or y2 + h > HEIGHT or y2 < 0:
+            if x2 + w > WIDTH or x2 < -1 or y2 + h > HEIGHT or y2 < -1:
                 able_to_move = False
 
         if able_to_move:
@@ -82,8 +82,8 @@ class Player(Entity):
 
 
 class Enemy(Entity):
-    def __init__(self, screen, pos):
-        super().__init__(screen, pos)
+    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30):
+        super().__init__(screen, pos, color, width, height, velocity)
         self.is_alive = True
         self.sleep_timer = 0
         self.fov = 180
@@ -101,27 +101,26 @@ class Enemy(Entity):
     def kill(self):
         self.is_alive = False
 
-    def move_forward(self):
+    def move_forward(self, entities=()):
         dx = -1 if self.look_direction == 3 else 1 if self.look_direction == 1 else 0
         dy = -1 if self.look_direction == 0 else 1 if self.look_direction == 2 else 0
-        moved = self.move(dx, dy)
+        moved = self.move(dx, dy, entities)
         if not moved:
             self.change_look_direction(choice([i for i in range(0, 4) if i != self.look_direction]))
             self.color = pygame.Color('yellow')
             self.sleep()
 
-    def update(self):
+    def update(self, entities=()):
         if self.sleep_timer:
             self.sleep_timer -= 1
         else:
+            self.color = pygame.Color('red')
             r = random()
             if r > 0.99:
                 rotate_dir = choice([-1, 1])
                 self.rotate(rotate_dir)
 
-            look_direction = self.get_look_direction()
-            self.color = (100, look_direction * 80, look_direction * 80)
-            self.move_forward()
+            self.move_forward(entities)
 
         self.draw()
 
