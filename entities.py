@@ -7,14 +7,15 @@ from main import FPS
 
 
 class Entity:
-    def __init__(self, screen, pos, color='white'):
+    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30):
         self.screen = screen
         self.x = pos[0]
         self.y = pos[1]
-        self.w = 20
-        self.h = 20
-        self.color = pygame.Color(color)
-        self.velocity = 300
+        self.w = width
+        self.h = height
+        self.color = color
+        self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), self.w, self.h])
+        self.velocity = velocity
 
     def get_pos(self):
         return self.x, self.y
@@ -38,11 +39,10 @@ class Entity:
         return self.w, self.h
 
     def draw(self):
-        pygame.draw.circle(self.screen, self.color, (round(self.x), round(self.y)), self.w)
+        self.update_hitbox()
+        pygame.draw.rect(self.screen, self.color, self.hitbox)
 
     def move(self, dx, dy, force_move=False):
-        # TODO
-        # перемещение существа на dx, dy
         x1, y1 = self.get_pos()
         velocity = self.get_velocity()
         w, h = self.w, self.h
@@ -50,31 +50,42 @@ class Entity:
 
         x2 = x1 + dx * velocity / FPS
         y2 = y1 + dy * velocity / FPS
+
         if not force_move:
-            if x2 + w > WIDTH or x2 - w < 0 or y2 + h > HEIGHT or y2 - h < 0:
+            if x2 + w > WIDTH or x2 < 0 or y2 + h > HEIGHT or y2 < 0:
                 able_to_move = False
 
         if able_to_move:
             self.x = x2
             self.y = y2
             self.draw()
+            return True
 
     def update(self):
         self.draw()
 
+    def update_hitbox(self):
+        self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), self.w, self.h])
+
     def set_velocity(self, velocity):
+        assert type(velocity) in (int, float), 'velocity argument can be only int or float'
         self.velocity = velocity
+
+    def set_size(self, size):
+        assert type(size) is tuple, 'size argument can be only tuple'
+        self.w, self.h = size
 
 
 class Player(Entity):
-    def __init__(self, screen, pos):
-        super().__init__(screen, pos)
+    def __init__(self, screen, pos, color=pygame.Color('white'), width=20, height=20, velocity=300):
+        super().__init__(screen, pos, color, width, height, velocity)
 
 
 class Enemy(Entity):
     def __init__(self, screen, pos):
         super().__init__(screen, pos)
         self.is_alive = True
+        self.sleep_timer = 0
         self.fov = 180
         self.look_direction = LOOK_UP
 
@@ -93,16 +104,26 @@ class Enemy(Entity):
     def move_forward(self):
         dx = -1 if self.look_direction == 3 else 1 if self.look_direction == 1 else 0
         dy = -1 if self.look_direction == 0 else 1 if self.look_direction == 2 else 0
-        self.move(dx, dy)
+        moved = self.move(dx, dy)
+        if not moved:
+            self.change_look_direction(choice([i for i in range(0, 4) if i != self.look_direction]))
+            self.color = pygame.Color('yellow')
+            self.sleep()
 
     def update(self):
-        r = random()
-        if r > 0.99:
-            rotate_dir = choice([-1, 1])
-            self.rotate(rotate_dir)
+        if self.sleep_timer:
+            self.sleep_timer -= 1
+        else:
+            r = random()
+            if r > 0.99:
+                rotate_dir = choice([-1, 1])
+                self.rotate(rotate_dir)
 
-        look_direction = self.get_look_direction()
-        self.color = (100, look_direction * 80, look_direction * 80)
-        self.move_forward()
+            look_direction = self.get_look_direction()
+            self.color = (100, look_direction * 80, look_direction * 80)
+            self.move_forward()
 
         self.draw()
+
+    def sleep(self, time=100):
+        self.sleep_timer = time

@@ -1,14 +1,11 @@
 from math import copysign
-from random import random, choice
-from threading import Thread
-from time import sleep
 
 from entities import *
 
 pygame.init()
 size = WIDTH, HEIGHT
 SCREEN = pygame.display.set_mode(size)
-FPS = 60
+FPS = 144
 
 sign = lambda x, y: copysign(x, y)
 
@@ -19,6 +16,7 @@ def main():
     clock = pygame.time.Clock()
 
     running = True
+    paused = False
     screen2 = pygame.Surface(size)
     player = Player(screen2, (WIDTH // 2, HEIGHT // 2))
 
@@ -29,7 +27,8 @@ def main():
 
     enemies = []
 
-    while running: # главный цикл
+    while running:  # Main loop
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -44,6 +43,8 @@ def main():
                     move_down = True
                 if event.key == pygame.K_w or event.key == pygame.K_UP:
                     move_up = True
+                if event.key == pygame.K_PAUSE:
+                    paused = not paused
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
@@ -61,6 +62,9 @@ def main():
                 if event.button == pygame.BUTTON_RIGHT:
                     delete_enemy(event.pos)
 
+        if paused:
+            continue
+
         if move_up:
             player.move(*DIRECTION_UP)
         if move_down and not move_up:
@@ -77,7 +81,6 @@ def main():
         pygame.display.flip()
 
         clock.tick(FPS)
-        SCREEN.fill((0, 0, 0))
         screen2.fill(pygame.Color('black'))
 
     pygame.quit()
@@ -89,7 +92,8 @@ def create_enemy(pos, *args):
     assert type(pos) is tuple, 'pos argument can be only tuple'
 
     enemy = Enemy(screen2, pos)
-    enemy.set_velocity(20)
+    enemy.set_velocity(40)
+    enemy.w, enemy.h = 10, 10
     enemies.append(enemy)
 
 
