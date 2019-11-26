@@ -50,11 +50,11 @@ class Entity:
 
         x2 = x1 + dx * velocity / FPS
         y2 = y1 + dy * velocity / FPS
-
+        '''
         if not force_move:
             if x2 + w > WIDTH or x2 < -1 or y2 + h > HEIGHT or y2 < -1:
                 able_to_move = False
-
+        '''
         if able_to_move:
             self.x = x2
             self.y = y2
@@ -79,6 +79,9 @@ class Entity:
 class Player(Entity):
     def __init__(self, screen, pos, color=pygame.Color('white'), width=20, height=20, velocity=300):
         super().__init__(screen, pos, color, width, height, velocity)
+
+    def draw(self):
+        pygame.draw.rect(self.screen, self.color, self.hitbox)
 
 
 class Enemy(Entity):
@@ -110,7 +113,9 @@ class Enemy(Entity):
             self.color = pygame.Color('yellow')
             self.sleep()
 
-    def update(self, entities=()):
+    def update(self, entities=(), offset=(0, 0)):
+        self.x -= offset[0]
+        self.y -= offset[1]
         if self.sleep_timer:
             self.sleep_timer -= 1
         else:

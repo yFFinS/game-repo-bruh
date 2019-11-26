@@ -13,7 +13,7 @@ sign = lambda x, y: copysign(x, y)
 
 
 def main():
-    global enemies, screen2
+    global enemies, screen2, player_pos
 
     clock = pygame.time.Clock()
 
@@ -22,12 +22,17 @@ def main():
     summon_timer = 50
 
     screen2 = pygame.Surface(size)
-    player = Player(screen2, (WIDTH // 2, HEIGHT // 2))
+    player_pos = WIDTH // 2, HEIGHT // 2
+    player = Player(screen2, player_pos)
 
     move_up = False
     move_down = False
     move_left = False
     move_right = False
+    actual_move_up = False
+    actual_move_down = False
+    actual_move_left = False
+    actual_move_right = False
 
     enemies = []
 
@@ -68,19 +73,25 @@ def main():
 
         if not paused:
             if move_left and move_right:
-                move_left = False
-                move_right = False
-            if move_down and move_up:
-                move_down = False
-                move_up = False
+                actual_move_left = False
+                actual_move_right = False
+            else:
+                actual_move_left = move_left
+                actual_move_right = move_right
+            if move_up and move_down:
+                actual_move_up = False
+                actual_move_down = False
+            else:
+                actual_move_up = move_up
+                actual_move_down = move_down
 
-            if move_up:
+            if actual_move_up:
                 player.move(*DIRECTION_UP)
-            if move_down:
+            if actual_move_down:
                 player.move(*DIRECTION_DOWN)
-            if move_left:
+            if actual_move_left:
                 player.move(*DIRECTION_LEFT)
-            if move_right:
+            if actual_move_right:
                 player.move(*DIRECTION_RIGHT)
 
             if summon_timer:
@@ -93,8 +104,11 @@ def main():
                 summon_timer = 50
 
             player.update()
+
+            offset = player.get_x() - player_pos[0], player.get_y() - player_pos[1]
+            player_pos = player.get_pos()
             for enemy in enemies:
-                enemy.update(enemies)
+                enemy.update(enemies, offset=offset)
 
         else:
             player.draw()
