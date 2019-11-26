@@ -1,34 +1,34 @@
-import pygame
-from entities import *
-from constants import *
 from math import copysign
+from random import random, choice
+from threading import Thread
+from time import sleep
+
+from entities import *
+
+pygame.init()
+size = WIDTH, HEIGHT
+SCREEN = pygame.display.set_mode(size)
+FPS = 60
 
 sign = lambda x, y: copysign(x, y)
 
 
 def main():
-    global fps, screen2, need_to_flip
-    pygame.init()
+    global enemies, screen2
 
-    fps = 60
     clock = pygame.time.Clock()
 
-    size = WIDTH, HEIGHT
-    screen = pygame.display.set_mode(size)
-
-    screen2 = pygame.Surface(size)
-
-    player = Player(WIDTH // 2, HEIGHT // 2)
-
     running = True
+    screen2 = pygame.Surface(size)
+    player = Player(screen2, (WIDTH // 2, HEIGHT // 2))
 
     move_up = False
     move_down = False
     move_left = False
     move_right = False
 
-    need_to_flip = False
-    move(player, 0, 0)
+    enemies = []
+
     while running: # главный цикл
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -55,45 +55,53 @@ def main():
                 if event.key == pygame.K_w or event.key == pygame.K_UP:
                     move_up = False
 
-        if move_down:
-            move(player, *DIRECTION_DOWN)
-        if move_up:
-            move(player, *DIRECTION_UP)
-        if move_left:
-            move(player, *DIRECTION_LEFT)
-        if move_right:
-            move(player, *DIRECTION_RIGHT)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == pygame.BUTTON_LEFT:
+                    create_enemy(event.pos)
+                if event.button == pygame.BUTTON_RIGHT:
+                    delete_enemy(event.pos)
 
-        if need_to_flip:
-            screen.blit(screen2, (0, 0))
-            screen2.fill(pygame.Color('black'))
-            pygame.display.flip()
-            need_to_flip = False
-        clock.tick(fps)
+        if move_up:
+            player.move(*DIRECTION_UP)
+        if move_down and not move_up:
+            player.move(*DIRECTION_DOWN)
+        if move_left:
+            player.move(*DIRECTION_LEFT)
+        if move_right and not move_left:
+            player.move(*DIRECTION_RIGHT)
+
+        player.update()
+        for enemy in enemies:
+            enemy.update()
+        SCREEN.blit(screen2, (0, 0))
+        pygame.display.flip()
+
+        clock.tick(FPS)
+        SCREEN.fill((0, 0, 0))
+        screen2.fill(pygame.Color('black'))
+
     pygame.quit()
 
 
-def move(entity, dx, dy, force_move=False):
-    #TODO
-    global fps, screen2, need_to_flip
-    # перемещение существа на dx, dy
-    x1, y1 = entity.get_pos()
-    velocity = entity.get_velocity()
-    w, h = 20, 20
-    able_to_move = True
+def create_enemy(pos, *args):
+    global enemies, screen2
 
-    x2 = x1 + dx * velocity / fps
-    y2 = y1 + dy * velocity / fps
-    if not force_move:
-        if x2 + w > WIDTH or x2 - w < 0 or y2 + h > HEIGHT or y2 - h < 0:
-            able_to_move = False
+    assert type(pos) is tuple, 'pos argument can be only tuple'
 
-    if able_to_move:
-        entity.move(x2, y2)
-        need_to_flip = True
-        pygame.draw.circle(screen2, pygame.Color('white'), (round(x2), round(y2)), w)
-    else:
-        print('Cannot move further')
+    enemy = Enemy(screen2, pos)
+    enemy.set_velocity(20)
+    enemies.append(enemy)
+
+
+def delete_enemy(pos, *args):
+    global enemies
+    x, y = pos
+    for i in range(len(enemies)):
+        w, h = enemies[i].get_size()
+        x1, y1 = enemies[i].get_pos()
+        if x1 - w <= x <= x1 + w and y1 - h <= y <= y1 + h:
+            del enemies[i]
+            break
 
 
 if __name__ == '__main__':
