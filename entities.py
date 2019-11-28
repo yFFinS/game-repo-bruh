@@ -1,21 +1,31 @@
-from random import random, choice
+from math import pi, sin, cos
+from random import random, randint
 
 import pygame
 
-from constants import *
 from main import FPS
 
 
 class Entity:
-    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30):
+    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30, hp=100):
         self.screen = screen
         self.x = pos[0]
         self.y = pos[1]
         self.w = width
         self.h = height
+        self.hp = hp
         self.color = color
         self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), self.w, self.h])
         self.velocity = velocity
+        self.sleep_timer = 0
+        self.look_angle = 0
+
+    def collision(self, other):
+        if self.hitbox.colliderect(other.hitbox):
+            return True
+
+    def get_hp(self):
+        return self.hp
 
     def get_pos(self):
         return self.x, self.y
@@ -42,6 +52,9 @@ class Entity:
         self.update_hitbox()
         pygame.draw.rect(self.screen, self.color, self.hitbox)
 
+    def is_sleep(self):
+        return self.sleep_timer > 0
+
     def move(self, dx, dy, entities=(), force_move=False):
         x1, y1 = self.get_pos()
         velocity = self.get_velocity()
@@ -50,22 +63,28 @@ class Entity:
 
         x2 = x1 + dx * velocity / FPS
         y2 = y1 + dy * velocity / FPS
-        '''
         if not force_move:
-            if x2 + w > WIDTH or x2 < -1 or y2 + h > HEIGHT or y2 < -1:
-                able_to_move = False
-        '''
+            for entity in entities:
+                if entity is not self and not entity.is_sleep():
+                    if self.collision(entity):
+                        able_to_move = False
+                        break
+
         if able_to_move:
             self.x = x2
             self.y = y2
             self.draw()
             return True
 
+    def offset(self, offset):
+        self.x -= offset[0]
+        self.y -= offset[1]
+
     def update(self):
         self.draw()
 
     def update_hitbox(self):
-        self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), self.w, self.h])
+        self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), round(self.w), round(self.h)])
 
     def set_velocity(self, velocity):
         assert type(velocity) in (int, float), 'velocity argument can be only int or float'
@@ -85,47 +104,37 @@ class Player(Entity):
 
 
 class Enemy(Entity):
-    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30):
-        super().__init__(screen, pos, color, width, height, velocity)
-        self.is_alive = True
-        self.sleep_timer = 0
-        self.fov = 180
-        self.look_direction = LOOK_UP
+    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30, hp=100, player=None):
+        super().__init__(screen, pos, color, width, height, velocity, hp)
+        self.player = player
+        self.fov = pi
+        self.view_range = 500
 
-    def change_look_direction(self, direction):
-        self.look_direction = direction
-
-    def get_look_direction(self):
-        return self.look_direction
-
-    def rotate(self, rotate_direction):
-        self.look_direction = (self.look_direction + rotate_direction) % 4
+    def rotate(self, angle):
+        self.look_angle = (self.look_angle + angle)
 
     def kill(self):
-        self.is_alive = False
+        self.hp = 0
 
-    def move_forward(self, entities=()):
-        dx = -1 if self.look_direction == 3 else 1 if self.look_direction == 1 else 0
-        dy = -1 if self.look_direction == 0 else 1 if self.look_direction == 2 else 0
-        moved = self.move(dx, dy, entities)
+    def move_forward(self):
+        dx = cos(self.look_angle)
+        dy = sin(self.look_angle)
+        moved = self.move(dx, dy)
         if not moved:
-            self.change_look_direction(choice([i for i in range(0, 4) if i != self.look_direction]))
             self.color = pygame.Color('yellow')
             self.sleep()
 
-    def update(self, entities=(), offset=(0, 0)):
-        self.x -= offset[0]
-        self.y -= offset[1]
+    def update(self):
         if self.sleep_timer:
             self.sleep_timer -= 1
         else:
             self.color = pygame.Color('red')
             r = random()
             if r > 0.99:
-                rotate_dir = choice([-1, 1])
-                self.rotate(rotate_dir)
+                angle = randint(0, 7)
+                self.rotate(angle)
 
-            self.move_forward(entities)
+            self.move_forward()
 
         self.draw()
 
