@@ -1,18 +1,18 @@
-from math import pi, sin, cos
+from math import pi, sin, cos, atan, ceil
 from random import random, randint
 
 import pygame
 
-from main import FPS
+from main import FPS, BACKGROUND
 
 
 class Entity:
-    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30, hp=100):
+    def __init__(self, screen, pos, color=pygame.Color('white'), size=(10, 10), velocity=30, hp=100):
         self.screen = screen
         self.x = pos[0]
         self.y = pos[1]
-        self.w = width
-        self.h = height
+        self.w, self.h = size
+        self.size = size
         self.hp = hp
         self.color = color
         self.hitbox = pygame.rect.Rect([round(self.x), round(self.y), self.w, self.h])
@@ -20,9 +20,18 @@ class Entity:
         self.sleep_timer = 0
         self.look_angle = 0
 
+    def clear_prev(self):
+        d = ceil(self.velocity / FPS)
+        self.screen.blit(BACKGROUND, (self.x - d, self.y - d), (self.x - d, self.y - d, self.w + d * 2, self.h + d * 2))
+
     def collision(self, other):
-        if self.hitbox.colliderect(other.hitbox):
-            return True
+        if type(other) == tuple:
+            print(1)
+            return self.hitbox.collidepoint(*other)
+        if type(other) == Entity:
+            return self.hitbox.colliderect(other.hitbox)
+        if type(other) == list and len(other) > 1:
+            return self.hitbox.collidelist(other.hitbox)
 
     def get_hp(self):
         return self.hp
@@ -49,6 +58,7 @@ class Entity:
         return self.w, self.h
 
     def draw(self):
+        self.clear_prev()
         self.update_hitbox()
         pygame.draw.rect(self.screen, self.color, self.hitbox)
 
@@ -76,11 +86,34 @@ class Entity:
             self.draw()
             return True
 
+    def move_to(self, pos):
+        dx, dy = 0, 0
+        if self.y != pos[1]:
+            if abs(self.y - pos[1]) < self.velocity / FPS + 1:
+                self.y = pos[1]
+                dx = 1 if self.x - pos[0] < 0 else -1
+                dy = 0
+            else:
+                angle = pi / 2 - atan((self.x - pos[0]) / (self.y - pos[1]))
+                dx = cos(angle)
+                dy = sin(angle)
+                if self.y > pos[1]:
+                    dy *= -1
+                    dx *= -1
+        elif self.x != pos[0]:
+            if abs(self.x - pos[0]) < self.velocity / FPS + 1:
+                self.x = pos[0]
+                dx = 0
+            else:
+                dx = 1 if self.x - pos[0] < 0 else -1
+        self.move(dx, dy)
+
     def offset(self, offset):
         self.x -= offset[0]
         self.y -= offset[1]
 
     def update(self):
+        self.update_hitbox()
         self.draw()
 
     def update_hitbox(self):
@@ -96,19 +129,18 @@ class Entity:
 
 
 class Player(Entity):
-    def __init__(self, screen, pos, color=pygame.Color('white'), width=20, height=20, velocity=300):
-        super().__init__(screen, pos, color, width, height, velocity)
-
-    def draw(self):
-        pygame.draw.rect(self.screen, self.color, self.hitbox)
+    def __init__(self, screen, pos, color=pygame.Color('white'), size=(20, 20), velocity=300):
+        super().__init__(screen, pos, color, size, velocity)
 
 
 class Enemy(Entity):
-    def __init__(self, screen, pos, color=pygame.Color('white'), width=10, height=10, velocity=30, hp=100, player=None):
-        super().__init__(screen, pos, color, width, height, velocity, hp)
+    def __init__(self, screen, pos, color=pygame.Color('white'), size=(20, 20), velocity=30, hp=100, player=None,
+                 team=1):
+        super().__init__(screen, pos, color, size, velocity, hp)
         self.player = player
         self.fov = pi
         self.view_range = 500
+        self.team = team
 
     def rotate(self, angle):
         self.look_angle = (self.look_angle + angle)
@@ -124,6 +156,9 @@ class Enemy(Entity):
             self.color = pygame.Color('yellow')
             self.sleep()
 
+    def move_to_player(self):
+        self.move_to(self.player.get_pos())
+
     def update(self):
         if self.sleep_timer:
             self.sleep_timer -= 1
@@ -134,7 +169,8 @@ class Enemy(Entity):
                 angle = randint(0, 7)
                 self.rotate(angle)
 
-            self.move_forward()
+            if self.get_pos() != self.player.get_pos():
+                self.move_to_player()
 
         self.draw()
 
