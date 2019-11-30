@@ -68,7 +68,6 @@ class Entity:
     def move(self, dx, dy, entities=(), force_move=False):
         x1, y1 = self.get_pos()
         velocity = self.get_velocity()
-        w, h = self.w, self.h
         able_to_move = True
 
         x2 = x1 + dx * velocity / FPS
