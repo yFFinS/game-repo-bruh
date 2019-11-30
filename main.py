@@ -24,7 +24,7 @@ class Game:
         self.entities = [self.player]
         self.enemies = []
         self.camera_x, self.camera_y = -(self.screen2.get_width() - WIDTH) // 2, -(
-                    self.screen2.get_height() - HEIGHT) // 2
+                self.screen2.get_height() - HEIGHT) // 2
         self.main()
 
     def main(self):
@@ -76,7 +76,7 @@ class Game:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == pygame.BUTTON_LEFT:
                         self.create_enemy((event.pos[0] - 10 - self.camera_x, event.pos[1] - 10 - self.camera_y),
-                                          player=self.player, size=(20, 20), velocity=300)
+                                          player=self.player, size=(20, 20), velocity=60)
                     if event.button == pygame.BUTTON_RIGHT:
                         self.delete_enemy((event.pos[0] - self.camera_x, event.pos[1] - self.camera_y))
                     if event.button == pygame.BUTTON_WHEELUP:
@@ -118,34 +118,47 @@ class Game:
                         move_d[0] = 1 / sqrt(2)
                     else:
                         move_d[0] = 1
-                if summon_timer:
+                '''if summon_timer:
                     pass
                 else:
                     w, h = randint(10, 30), randint(10, 30)
                     x, y = randint(0, WIDTH - w), randint(0, HEIGHT - h)
                     vel = randint(10, 100)
                     self.create_enemy((x, y), size=(w, h), velocity=vel, player=self.player)
-                    summon_timer = 50
+                    summon_timer = 50'''
 
                 self.player.move(*move_d)
                 offset = self.player.get_x() - self.player_pos[0], self.player.get_y() - self.player_pos[1]
-                self.camera_x -= offset[0]
-                self.camera_y -= offset[1]
+                if BACKGROUND.get_width() - WIDTH // 2 > self.player.get_x() > WIDTH // 2:
+                    self.camera_x -= offset[0]
+                else:
+                    if self.player.get_x() <= WIDTH // 2:
+                        self.camera_x = 0
+                    else:
+                        self.camera_x = BACKGROUND.get_width() - WIDTH // 2
+                if BACKGROUND.get_height() - HEIGHT // 2 > self.player.get_y() > HEIGHT // 2:
+                    self.camera_y -= offset[1]
+                else:
+                    if self.player.get_y() <= HEIGHT // 2:
+                        self.camera_y = 0
+                    else:
+                        self.camera_y = BACKGROUND.get_height() - HEIGHT // 2
                 self.player_pos = self.player.get_pos()
                 self.player.update()
-
                 for enemy in self.enemies:
                     enemy.update()
-
 
             else:
                 self.player.draw()
                 for enemy in self.enemies:
                     enemy.draw()
             font = pygame.font.Font(None, 30)
-            fps = font.render('FPS: ' + str(int(clock.get_fps())), True, pygame.Color('green'))
+            fps = font.render(
+                'FPS: ' + str(int(clock.get_fps())) + ' Player coords: ' + str(int(self.player.get_x())) + ' ' + str(
+                    int(self.player.get_y())), True, pygame.Color('green'))
             SCREEN.blit(self.screen2, (self.camera_x, self.camera_y))
             SCREEN.blit(fps, (10, 10))
+            print('yes')
             pygame.display.flip()
 
             clock.tick(FPS)
@@ -154,11 +167,11 @@ class Game:
 
     def create_enemy(self, pos, **kwargs):
 
-        enemy = Enemy(self.screen2, pos, pygame.Color('red'), **kwargs)
+        enemy = Enemy(self.screen2, pos, pygame.Color('green'), **kwargs)
         self.enemies.append(enemy)
         self.entities.append(enemy)
 
-    def delete_enemy(self, pos, *args):
+    def delete_enemy(self, pos):
         x, y = pos
         for i in range(len(self.enemies)):
             if self.enemies[i].collision((x, y)):

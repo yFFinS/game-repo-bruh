@@ -1,4 +1,4 @@
-from math import pi, sin, cos, atan, ceil
+from math import pi, sin, cos, atan, ceil, atan2, floor, radians
 from random import random, randint
 
 import pygame
@@ -21,7 +21,7 @@ class Entity:
         self.look_angle = 0
 
     def clear_prev(self):
-        d = ceil(self.velocity / FPS)
+        d = ceil(self.velocity / FPS) + 0.5
         self.screen.blit(BACKGROUND, (self.x - d, self.y - d), (self.x - d, self.y - d, self.w + d * 2, self.h + d * 2))
 
     def collision(self, other):
@@ -138,19 +138,30 @@ class Enemy(Entity):
                  team=1):
         super().__init__(screen, pos, color, size, velocity, hp)
         self.player = player
-        self.fov = pi
-        self.view_range = 500
+        self.fov = 60
+        self.view_range = 150
         self.team = team
+        self.attacking = False
+
+    def check_for_player(self):
+        if (self.player.get_x() - self.x) * (self.player.get_x() - self.x) + (self.player.get_y() - self.y) * (
+                self.player.get_y() - self.y) <= self.view_range * self.view_range:
+            dist_orient = atan2(-(self.player.get_x() - self.x), self.player.get_y() - self.y) * (180 / pi)
+            ang_dist = dist_orient - (self.look_angle - 90) % 360
+            ang_dist = ang_dist - 360 * floor((ang_dist + 180) * (1 / 360))
+            if abs(ang_dist) <= self.fov:
+                self.color = pygame.Color('red')
+                self.attacking = True
 
     def rotate(self, angle):
-        self.look_angle = (self.look_angle + angle)
+        self.look_angle = (self.look_angle + angle) % 360
 
     def kill(self):
         self.hp = 0
 
     def move_forward(self):
-        dx = cos(self.look_angle)
-        dy = sin(self.look_angle)
+        dx = cos(radians(self.look_angle))
+        dy = sin(radians(self.look_angle))
         moved = self.move(dx, dy)
         if not moved:
             self.color = pygame.Color('yellow')
@@ -162,15 +173,20 @@ class Enemy(Entity):
     def update(self):
         if self.sleep_timer:
             self.sleep_timer -= 1
+            if self.sleep_timer == 0:
+                self.color = pygame.Color('green')
         else:
-            self.color = pygame.Color('red')
-            r = random()
-            if r > 0.99:
-                angle = randint(0, 7)
-                self.rotate(angle)
 
-            if self.get_pos() != self.player.get_pos():
-                self.move_to_player()
+            if self.attacking:
+                if self.get_pos() != self.player.get_pos():
+                    self.move_to_player()
+            else:
+                r = random()
+                if r > 0.999:
+                    angle = randint(0, 90)
+                    self.rotate(angle)
+                self.move_forward()
+                self.check_for_player()
 
         self.draw()
 
