@@ -1,8 +1,0 @@
-
-
-LOOK_UP = 0
-LOOK_LEFT = 3
-LOOK_DOWN = 2
-LOOK_RIGHT = 1
-
-
