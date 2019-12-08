@@ -63,13 +63,13 @@ class Entity:  # Used to create and control entities
             if not self.timers['base_attack_time'].is_started():
                 self.timers['base_attack_time'].args = (self.target,)
                 self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
-    
+
     def clear_attack_animation(self, attack_box, d):
         x, y = attack_box.x, attack_box.y
         self.screen.blit(BACKGROUND, (x, y),
                          (x, y, self.weapon.attack_range,
                           2 * self.weapon.attack_width))
-    
+
     def clear_prev(self):  # Clears previous position sprite
         d = ceil(self.velocity / FPS) + 1
         self.screen.blit(BACKGROUND, (self.x - d - self.w // 2, self.y - d - self.h // 2),
@@ -120,29 +120,31 @@ class Entity:  # Used to create and control entities
         return self.timers['sleep_timer'].is_started()
 
     def move(self, dx, dy, entities=(), force_move=False):  # Changes self x, y to dx, dy
-        x1, y1 = self.get_pos()
-        velocity = self.get_velocity()
+        x1, y1 = self.x, self.y
+        velocity = self.velocity
 
-        x2 = x1 + dx * velocity / FPS
-        y2 = y1 + dy * velocity / FPS
         if type(self) is Player:
             if dx > 0:
                 self.look_angle = 0
             elif dx < 0:
                 self.look_angle = 180
-        if not force_move:
-            if not (self.w // 2 <= x2 + self.w // 2 <= self.screen.get_width()
-                    and self.h // 2 <= y2 + self.h // 2 <= self.screen.get_height()):
-                return False
+        if force_move:
+            x2 = x1 + dx * velocity / FPS
+            y2 = y1 + dy * velocity / FPS
+        else:
             for entity in entities:
                 if entity is not self and not entity.is_sleep():
                     if self.collision(entity):
-                        return False
+                        return
+            x2 = max(self.w // 2, x1 + dx * velocity / FPS)
+            x2 = min(x2, self.screen.get_width() - self.w // 2)
+            y2 = max(self.h // 2, y1 + dy * velocity / FPS)
+            y2 = min(y2, self.screen.get_height() - self.h // 2)
 
         self.x = x2
         self.y = y2
         self.draw()
-        return True
+        return
 
     def kill(self):  # Kills self
         self.hp = 0
@@ -231,9 +233,9 @@ class Player(Entity):  # Player class
 
     def start_attacking(self, enemies):
         if not self.timers['base_attack_time'].is_started():
-            self.timers['base_attack_time'].args = (enemies, )
+            self.timers['base_attack_time'].args = (enemies,)
             self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
-    
+
     def hurt(self, damage):  # Gets damaged
         self.hp = max(0, self.hp - damage)
         self.invul = True

@@ -46,39 +46,21 @@ class Game:  # Main class
 
             if not self.paused:
                 # Move calculation
-                if self.move_left and self.move_right:
-                    actual_move_left = False
-                    actual_move_right = False
-                else:
-                    actual_move_left = self.move_left
-                    actual_move_right = self.move_right
-                if self.move_up and self.move_down:
-                    actual_move_up = False
-                    actual_move_down = False
-                else:
-                    actual_move_up = self.move_up
-                    actual_move_down = self.move_down
-
                 move_d = [0, 0]
-                if actual_move_up:
-                    move_d[1] = -1
-                if actual_move_down:
-                    move_d[1] = 1
-                if actual_move_left:
+                if self.move_up:
+                    move_d[1] -= 1
+                if self.move_down:
+                    move_d[1] += 1
+                if self.move_left:
                     if move_d[1] != 0:
                         move_d[1] /= sqrt(2)
-                        move_d[0] = -1 / sqrt(2)
-                    else:
-                        move_d[0] = -1
-                if actual_move_right:
+                    move_d[0] -= 1 / sqrt(2)
+                if self.move_right:
                     if move_d[1] != 0:
                         move_d[1] /= sqrt(2)
-                        move_d[0] = 1 / sqrt(2)
-                    else:
-                        move_d[0] = 1
+                    move_d[0] += 1 / sqrt(2)
 
-                self.player.move(move_d[0], 0)
-                self.player.move(0, move_d[1])
+                self.player.move(*move_d)
 
                 # Camera move
                 offset = self.player.get_x() - self.player_pos[0], self.player.get_y() - self.player_pos[1]
