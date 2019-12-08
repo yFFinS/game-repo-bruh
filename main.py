@@ -94,7 +94,7 @@ class Game:  # Main class
 
                 '''self.player.move(move_d[0], 0)
                 self.player.move(0, move_d[1])'''
-                self.player.move(*move_d)
+                self.player.move(*move_d, force_move=True)
 
                 # Camera move
                 offset = self.player.get_x() - self.player_pos[0], self.player.get_y() - self.player_pos[1]
