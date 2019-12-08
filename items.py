@@ -1,3 +1,6 @@
+import pygame
+
+
 class Item:
     def __init__(self, name):
         self.name = name
@@ -14,3 +17,4 @@ class Weapon(Item):
         self.special_effect = special_effect
         self.attack_range = attack_range
         self.attack_width = attack_width
+        self.image = pygame.image.load('images/weapon.png')
