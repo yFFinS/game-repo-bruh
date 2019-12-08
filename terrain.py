@@ -21,12 +21,16 @@ class Terrain:
     def draw(self):
         for x in range(self.width):
             for y in range(self.height):
-                self.screen.blit(pygame.transform.scale(TILES[self.terrain[y][x]].texture, (self.tile_size, self.tile_size)), (x * self.tile_size, y * self.tile_size))
+                self.screen.blit(
+                    pygame.transform.scale(TILES[self.terrain[y][x]].texture, (self.tile_size, self.tile_size)),
+                    (x * self.tile_size, y * self.tile_size))
 
     def update_tile(self, pos, radius=1):
         for x in range(pos[0] - radius, pos[0] + radius):
             for y in range(pos[1] - radius, pos[1] + radius):
-                self.screen.blit(pygame.transform.scale(TILES[self.terrain[y][x]].texture, (self.tile_size, self.tile_size)), (x * self.tile_size, y * self.tile_size))
+                self.screen.blit(
+                    pygame.transform.scale(TILES[self.terrain[y][x]].texture, (self.tile_size, self.tile_size)),
+                    (x * self.tile_size, y * self.tile_size))
 
 
 class Tile:
