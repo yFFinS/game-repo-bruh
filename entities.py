@@ -162,7 +162,7 @@ class Entity:  # Used to create and control entities
         self.x = x2
         self.y = y2
         self.draw()
-        return
+        return True
 
     def kill(self):  # Kills self
         self.hp = 0
