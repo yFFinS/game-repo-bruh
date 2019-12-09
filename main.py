@@ -10,7 +10,10 @@ WIDTH = info.current_w
 HEIGHT = info.current_h
 size = WIDTH, HEIGHT
 SCREEN = pygame.display.set_mode(size, pygame.FULLSCREEN)
-FPS = 60
+FPS = 40
+
+PLAYER_TEXTURE_PATH = 'images/player.png'
+ENEMIY_TEXTURE_PATHS = {1: 'images/enemy1.png'}
 
 
 class Game:  # Main class
@@ -18,9 +21,9 @@ class Game:  # Main class
 
         # FPS clock
         self.clock = pygame.time.Clock()
-        
+
         self.terrain = Terrain(50, 50, 100)
-        
+
         self.move_up = False
         self.move_down = False
         self.move_left = False
@@ -36,7 +39,7 @@ class Game:  # Main class
 
     def reset(self):
         self.player_pos = self.screen2.get_width() // 2, self.screen2.get_height() // 2
-        self.player = Player(self.screen2, self.player_pos)
+        self.player = Player(self.screen2, self.player_pos, PLAYER_TEXTURE_PATH, (70, 100))
         self.player.set_attribute("velocity", 700)
         self.entities = [self.player]
         self.enemies = []
@@ -52,12 +55,9 @@ class Game:  # Main class
             # Screen update
             update_coords = set()
             for entity in self.entities:
-                x, y = map(int, entity.get_pos())
-                x //= self.terrain.tile_size
-                y //= self.terrain.tile_size
-                update_coords.add((x, y))
+                update_coords.add(entity.get_pos())
             for coords in update_coords:
-                self.terrain.update_tile(coords, 2)
+                self.update_tiles(coords, 2)
 
             if not self.paused:
                 # Move calculation
@@ -78,18 +78,18 @@ class Game:  # Main class
                 self.player.move(*move_d)
 
                 # Camera move
-                offset = self.player.get_x() - self.player_pos[0], self.player.get_y() - self.player_pos[1]
-                if self.screen2.get_width() - WIDTH // 2 > self.player.get_x() > WIDTH // 2:
+                offset = self.player.get_centerx() - self.player_pos[0], self.player.get_centery() - self.player_pos[1]
+                if self.screen2.get_width() - WIDTH // 2 > self.player.get_centerx() > WIDTH // 2:
                     self.camera_x -= offset[0]
                 else:
-                    if self.player.get_x() <= WIDTH // 2:
+                    if self.player.get_centerx() <= WIDTH // 2:
                         self.camera_x = 0
                     else:
                         self.camera_x = -(self.screen2.get_width() - WIDTH)
-                if self.screen2.get_height() - HEIGHT // 2 > self.player.get_y() > HEIGHT // 2:
+                if self.screen2.get_height() - HEIGHT // 2 > self.player.get_centery() > HEIGHT // 2:
                     self.camera_y -= offset[1]
                 else:
-                    if self.player.get_y() <= HEIGHT // 2:
+                    if self.player.get_centery() <= HEIGHT // 2:
                         self.camera_y = 0
                     else:
                         self.camera_y = -(self.screen2.get_height() - HEIGHT)
@@ -126,16 +126,21 @@ class Game:  # Main class
 
     def create_enemy(self, pos, **kwargs):  # Creates enemy at pos with given kwargs
 
-        enemy = Enemy(self.screen2, pos, pygame.Color('green'), **kwargs)
+        enemy = Enemy(self.screen2, pos, **kwargs)
         # Adding it to all entities
         self.enemies.append(enemy)
         self.entities.append(enemy)
+
+    def update_tiles(self, pos, radius=1):
+        x = int(pos[0]) // self.terrain.tile_size
+        y = int(pos[1]) // self.terrain.tile_size
+        self.terrain.update_tile((x, y), radius)
 
     def delete_enemy(self, pos):  # Deletes enemy at pos
         x, y = pos
         for i in range(len(self.enemies)):
             if self.enemies[i].collision((x, y)):
-                self.enemies[i].clear_prev()
+                self.update_tiles(self.enemies[i].get_pos(), 2)
                 del self.entities[self.entities.index(self.enemies[i])]
                 del self.enemies[i]
                 break
@@ -191,8 +196,9 @@ class Game:  # Main class
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
                     if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                        self.create_enemy((event.pos[0] - 10 - self.camera_x, event.pos[1] - 10 - self.camera_y),
-                                          player=self.player, size=(20, 20), velocity=60)
+                        self.create_enemy((event.pos[0] - self.camera_x, event.pos[1] - self.camera_y),
+                                          player=self.player, size=(70, 100), velocity=60,
+                                          texture_path=ENEMIY_TEXTURE_PATHS[1])
                     else:
                         self.player.attack(self.enemies)
                 if event.button == pygame.BUTTON_RIGHT:
@@ -207,7 +213,7 @@ class Game:  # Main class
                 mx -= self.camera_x
                 my -= self.camera_y
                 self.player.look_angle = (-degrees(
-                    atan2(-(self.player.get_y() - my), -(self.player.get_x() - mx))) + 360) % 360
+                    atan2(-(self.player.get_centery() - my), -(self.player.get_centerx() - mx))) + 360) % 360
 
 
 if __name__ == '__main__':  # Main

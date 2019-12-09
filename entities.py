@@ -1,4 +1,4 @@
-from math import pi, sin, cos, atan, atan2, floor, radians, sqrt
+from math import pi, sin, cos, atan, atan2, floor, radians, sqrt, degrees
 from random import random, randint
 
 from items import *
@@ -6,15 +6,17 @@ from main import FPS
 
 
 class Entity:  # Used to create and control entities
-    def __init__(self, screen, pos, color=pygame.Color('white'), size=(10, 10), velocity=30, hp=100):  # Init
+    def __init__(self, screen, pos, texture_path, size=(10, 10), velocity=30, hp=100):  # Init
         self.screen = screen
-        self.x = pos[0]
-        self.y = pos[1]
+        self.x = pos[0] - size[0]
+        self.y = pos[1] - size[1]
+        self.centerx = pos[0]
+        self.centery = pos[1]
         self.w, self.h = size
         self.size = size
         self.hp = hp
-        self.color = color
-        self.hitbox = pygame.rect.Rect([round(self.x) - self.w // 2, round(self.y) - self.h // 2,
+        self.texture = pygame.transform.scale(pygame.image.load(texture_path), size)
+        self.hitbox = pygame.rect.Rect([round(self.centerx) - self.w // 2, round(self.centery) - self.h // 2,
                                         self.w, self.h])
         self.velocity = velocity
         self.default_velocity = velocity
@@ -34,17 +36,20 @@ class Entity:  # Used to create and control entities
         self.pushed = [False, 0, 0]
 
         self.attack_box = pygame.rect.Rect(
-            [self.x - self.weapon.attack_width, self.y,
+            [self.centerx - self.weapon.attack_width, self.centery,
              2 * self.weapon.attack_width,
              self.weapon.attack_range])
+
+    def reload_texture(self):
+        self.texture = pygame.transform.scale(self.texture, self.size)
 
     def update_attackbox(self):
         if type(self) is Player:
             dx, dy = (0, -1) if 45 <= self.look_angle <= 135 else (0, 1) if 225 <= self.look_angle <= 315 \
                 else (1, 0) if (315 <= self.look_angle <= 360 or 0 <= self.look_angle <= 45) else (-1, 0)
         else:
-            x = self.x - self.target.x
-            y = self.y - self.target.y
+            x = self.centerx - self.target.x
+            y = self.centery - self.target.y
             dx = 1 if x <= 0 else -1
             dy = 1 if y <= 0 else -1
             if abs(x) >= abs(y):
@@ -54,20 +59,21 @@ class Entity:  # Used to create and control entities
 
         if dx == 1:
             self.attack_box = pygame.rect.Rect(
-                [self.x, self.y - self.weapon.attack_width, self.weapon.attack_range,
+                [self.centerx, self.centery - self.weapon.attack_width, self.weapon.attack_range,
                  2 * self.weapon.attack_width])
         elif dx == -1:
             self.attack_box = pygame.rect.Rect(
-                [self.x - self.weapon.attack_range, self.y - self.weapon.attack_width, self.weapon.attack_range,
+                [self.centerx - self.weapon.attack_range, self.centery - self.weapon.attack_width,
+                 self.weapon.attack_range,
                  2 * self.weapon.attack_width])
         elif dy == -1:
             self.attack_box = pygame.rect.Rect(
-                [self.x - self.weapon.attack_width, self.y - self.weapon.attack_range,
+                [self.centerx - self.weapon.attack_width, self.centery - self.weapon.attack_range,
                  2 * self.weapon.attack_width,
                  self.weapon.attack_range])
         elif dy == 1:
             self.attack_box = pygame.rect.Rect(
-                [self.x - self.weapon.attack_width, self.y,
+                [self.centerx - self.weapon.attack_width, self.centery,
                  2 * self.weapon.attack_width,
                  self.weapon.attack_range])
 
@@ -90,16 +96,6 @@ class Entity:  # Used to create and control entities
                 self.timers['base_attack_time'].args = (self.target,)
                 self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
 
-    '''def clear_attack_animation(self):
-        x, y = self.attack_box.x, self.attack_box.y
-        self.screen.blit(BACKGROUND, (x, y), self.attack_box)
-
-    def clear_prev(self):  # Clears previous position sprite
-        d = ceil(self.velocity / FPS) + 1
-        self.screen.blit(BACKGROUND, (self.x - d - self.w // 2, self.y - d - self.h // 2),
-                         (self.x - d - self.w // 2, self.y - d - self.h // 2,
-                          self.w + d * 2, self.h + d * 2))'''
-
     def collision(self, other):  # Checks for collision with point / entity / entity list
         if type(other) == tuple:
             return self.hitbox.collidepoint(*other)
@@ -109,22 +105,23 @@ class Entity:  # Used to create and control entities
             return self.hitbox.collidelist(other.hitbox)
 
     def distance(self, pos):  # Returns distance between self and pos
-        return sqrt((self.x - pos[0]) * (self.x - pos[0]) + (self.y - pos[1]) * (self.y - pos[1]))
+        return sqrt(
+            (self.centerx - pos[0]) * (self.centerx - pos[0]) + (self.centery - pos[1]) * (self.centery - pos[1]))
 
     def get_hp(self):  # Returns self health points
         return self.hp
 
     def get_pos(self):  # Returns self pos
-        return self.x, self.y
+        return self.centerx, self.centery
 
     def get_velocity(self):  # Returns self velocity
         return self.velocity
 
-    def get_x(self):  # Returns self x
-        return self.x
+    def get_centerx(self):  # Returns self x
+        return self.centerx
 
-    def get_y(self):  # Returns self y
-        return self.y
+    def get_centery(self):  # Returns self y
+        return self.centery
 
     def get_width(self):  # Returns self width
         return self.w
@@ -136,14 +133,16 @@ class Entity:  # Used to create and control entities
         return self.w, self.h
 
     def draw(self):  # Draws self on self.screen
-        self.update_hitbox()
-        pygame.draw.rect(self.screen, self.color, self.hitbox)
+        if 90 <= self.look_angle <= 270:
+            self.screen.blit(self.texture, (self.x, self.y))
+        else:
+            self.screen.blit(pygame.transform.flip(self.texture, self.texture.get_width() // 2, 0), (self.x, self.y))
 
     def is_sleep(self):  # Returns True if self is sleeping
         return self.timers['sleep_timer'].is_started()
 
     def move(self, dx, dy, entities=(), force_move=False):  # Changes self x, y to dx, dy
-        x1, y1 = self.x, self.y
+        x1, y1 = self.centerx, self.centery
         velocity = self.velocity
 
         if force_move:
@@ -159,8 +158,10 @@ class Entity:  # Used to create and control entities
             y2 = max(self.h // 2, y1 + dy * velocity / FPS)
             y2 = min(y2, self.screen.get_height() - self.h // 2)
 
-        self.x = x2
-        self.y = y2
+        self.centerx = x2
+        self.centery = y2
+        self.x = self.centerx - self.size[0] // 2
+        self.y = self.centery - self.size[1] // 2
         self.draw()
         return True
 
@@ -174,33 +175,36 @@ class Entity:  # Used to create and control entities
 
     def move_to(self, pos, entities=(), force_move=False):  # Tries to move self to pos
         dx, dy = 0, 0
-        if self.y != pos[1]:
-            if abs(self.y - pos[1]) < self.velocity / FPS + 1:
-                self.y = pos[1]
-                dx = 1 if self.x - pos[0] < 0 else -1
+        if pos[0] >= self.centerx:
+            self.look_angle = 0
+        else:
+            self.look_angle = 180
+        if self.centery != pos[1]:
+            if abs(self.centery - pos[1]) < self.velocity / FPS + 1:
+                self.centery = pos[1]
+                dx = 1 if self.centerx - pos[0] < 0 else -1
                 dy = 0
             else:
-                angle = pi / 2 - atan((self.x - pos[0]) / (self.y - pos[1]))
+                angle = pi / 2 - atan((self.centerx - pos[0]) / (self.centery - pos[1]))
                 dx = cos(angle)
                 dy = sin(angle)
-                if self.y > pos[1]:
+                if self.centery > pos[1]:
                     dy *= -1
                     dx *= -1
-        elif self.x != pos[0]:
-            if abs(self.x - pos[0]) < self.velocity / FPS + 1:
-                self.x = pos[0]
+        elif self.centerx != pos[0]:
+            if abs(self.centerx - pos[0]) < self.velocity / FPS + 1:
+                self.centerx = pos[0]
                 dx = 0
             else:
-                dx = 1 if self.x - pos[0] < 0 else -1
-        self.move(dx, 0, entities, force_move)
-        self.move(0, dy, entities, force_move)
+                dx = 1 if self.centerx - pos[0] < 0 else -1
+        self.move(dx, dy, entities, force_move)
 
     def update(self):  # Updates self
         self.update_hitbox()
         self.draw()
 
     def update_hitbox(self):  # Updates self hitbox
-        self.hitbox = pygame.rect.Rect([round(self.x) - self.w // 2, round(self.y) - self.h // 2,
+        self.hitbox = pygame.rect.Rect([round(self.centerx) - self.w // 2, round(self.centery) - self.h // 2,
                                         self.w, self.h])
 
     def push(self, dx, dy, strength):
@@ -227,8 +231,8 @@ class Entity:  # Used to create and control entities
 
 
 class Player(Entity):  # Player class
-    def __init__(self, screen, pos, color=pygame.Color('white'), size=(20, 20), velocity=300):
-        super().__init__(screen, pos, color, size, velocity)
+    def __init__(self, screen, pos, texture_path, size=(20, 20), velocity=300, hp=100):
+        super().__init__(screen, pos, texture_path, size, velocity, hp)
 
     def start_attacking(self, enemies):
         if not self.timers['base_attack_time'].is_started():
@@ -248,8 +252,8 @@ class Player(Entity):  # Player class
 
 
 class Enemy(Entity):  # Enemy class
-    def __init__(self, screen, pos, color=pygame.Color('white'), size=(20, 20), velocity=30, hp=100, player=None):
-        super().__init__(screen, pos, color, size, velocity, hp)
+    def __init__(self, screen, pos, texture_path, size=(20, 20), velocity=30, hp=100, player=None):
+        super().__init__(screen, pos, texture_path, size, velocity, hp)
         self.player = player
         self.fov = 60
         self.view_range = 150
@@ -258,7 +262,6 @@ class Enemy(Entity):  # Enemy class
         self.timers['player_near'] = Timer(100, self.aggro)
 
     def aggro(self):
-        self.color = pygame.Color('red')
         self.attacking = True
 
     def check_for_player(self):  # Checks for player in self line-of-sight
@@ -270,9 +273,11 @@ class Enemy(Entity):  # Enemy class
         else:
             self.timers['player_near'].stop()
             self.timers['player_near'].reset()
-        if (self.target.get_x() - self.x) * (self.target.get_x() - self.x) + (self.target.get_y() - self.y) * (
-                self.target.get_y() - self.y) <= self.view_range * self.view_range:
-            dist_orient = atan2(-(self.target.get_x() - self.x), self.target.get_y() - self.y) * (180 / pi)
+        if (self.target.get_centerx() - self.centerx) * (self.target.get_centerx() - self.centerx) + (
+                self.target.get_centery() - self.centery) * (
+                self.target.get_centery() - self.centery) <= self.view_range * self.view_range:
+            dist_orient = atan2(-(self.target.get_centerx() - self.centerx),
+                                self.target.get_centery() - self.centery) * (180 / pi)
             ang_dist = dist_orient - (self.look_angle - 90) % 360
             ang_dist = ang_dist - 360 * floor((ang_dist + 180) * (1 / 360))
             if abs(ang_dist) <= self.fov:
@@ -310,6 +315,7 @@ class Enemy(Entity):  # Enemy class
                 self.move_forward()
                 self.check_for_player()
 
+        self.update_hitbox()
         self.draw()
 
     def sleep(self, time=100):  # Sleeps for given time
