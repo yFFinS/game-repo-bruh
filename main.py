@@ -56,8 +56,7 @@ class Game:  # Main class
             update_coords = set()
             for entity in self.entities:
                 update_coords.add(entity.get_pos())
-            for coords in update_coords:
-                self.update_tiles(coords, 2)
+            self.update_tiles(update_coords, 2)
 
             if not self.paused:
                 # Move calculation
@@ -131,16 +130,26 @@ class Game:  # Main class
         self.enemies.append(enemy)
         self.entities.append(enemy)
 
-    def update_tiles(self, pos, radius=1):
+    def update_tile(self, pos, radius=1):
         x = int(pos[0]) // self.terrain.tile_size
         y = int(pos[1]) // self.terrain.tile_size
         self.terrain.update_tile((x, y), radius)
+
+    def update_tiles(self, pos_set, radius=1):
+        temp = set()
+        for pos in pos_set:
+            x, y = pos
+            x = int(x) // self.terrain.tile_size
+            y = int(y) // self.terrain.tile_size
+            temp.add((x, y))
+        for pos in temp:
+            self.terrain.update_tile(pos, radius)
 
     def delete_enemy(self, pos):  # Deletes enemy at pos
         x, y = pos
         for i in range(len(self.enemies)):
             if self.enemies[i].collision((x, y)):
-                self.update_tiles(self.enemies[i].get_pos(), 2)
+                self.update_tile(self.enemies[i].get_pos(), 2)
                 del self.entities[self.entities.index(self.enemies[i])]
                 del self.enemies[i]
                 break
