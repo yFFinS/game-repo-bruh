@@ -24,8 +24,10 @@ class Entity:  # Used to create and control entities
         self.look_angle = 0
         self.weapon = Weapon('bruher', 30, attack_speed=50, attack_range=50, attack_width=30)
         self.target = None
+        self.waiting = False
         self.invul = False
         self.timers = {'sleep_timer': Timer(100),
+                       'wait': Timer(200, target=self.wait, mode=1),
                        'base_attack_time': Timer(10, target=self.attack, args=(self.target,)),
                        'attack_time': Timer(10000 // (self.attack_speed + self.weapon.attack_speed),
                                             target=self.attack, args=(self.target,)),
@@ -213,6 +215,21 @@ class Entity:  # Used to create and control entities
         self.velocity = strength
         self.pushed = [True, dx, dy]
 
+    def rotate(self, angle):  # Rotates self
+        self.look_angle = (self.look_angle + angle) % 360
+
+    def random_rotation(self):
+        self.rotate(randint(-180, 180))
+
+    def sleep(self, time=100):  # Sleeps for given time
+        self.timers['sleep_timer'].start(time)
+
+    def wait(self):
+        self.waiting = not self.waiting
+        self.timers['wait'].default_time = randint(50, 250)
+        self.timers['wait'].reset()
+        self.random_rotation()
+
     def restore(self):
         self.can_move = True
         self.pushed = [False, 0, 0]
@@ -260,6 +277,7 @@ class Enemy(Entity):  # Enemy class
         self.target = self.player
         self.attacking = False
         self.timers['player_near'] = Timer(100, self.aggro)
+        self.timers['wait'].start()
 
     def aggro(self):
         self.attacking = True
@@ -283,9 +301,6 @@ class Enemy(Entity):  # Enemy class
             if abs(ang_dist) <= self.fov:
                 self.aggro()
 
-    def rotate(self, angle):  # Rotates self
-        self.look_angle = (self.look_angle + angle) % 360
-
     def move_forward(self):  # Moves self toward looking direction
         dx = cos(radians(self.look_angle))
         dy = sin(radians(self.look_angle))
@@ -296,7 +311,7 @@ class Enemy(Entity):  # Enemy class
     def move_to_target(self):  # Moves self toward target
         self.move_to(self.target.get_pos())
 
-    def update(self):  # Updates self
+    def update(self):  # Updates self + AI
         self.update_attackbox()
         for timer in self.timers.values():
             if timer.is_started():
@@ -304,22 +319,15 @@ class Enemy(Entity):  # Enemy class
 
         if not self.is_sleep():
             if self.attacking:
-                if self.get_pos() != self.target.get_pos():
-                    self.move_to_target()
+                self.move_to_target()
                 self.try_to_attack()
             else:
-                r = random()
-                if r > 0.999:
-                    angle = randint(-90, 90)
-                    self.rotate(angle)
-                self.move_forward()
+                if not self.waiting:
+                    self.move_forward()
                 self.check_for_player()
 
         self.update_hitbox()
         self.draw()
-
-    def sleep(self, time=100):  # Sleeps for given time
-        self.timers['sleep_timer'].start(time)
 
     def hurt(self, damage):  # Gets damaged
         self.aggro()
