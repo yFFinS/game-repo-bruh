@@ -1,5 +1,5 @@
 
-from math import pi, sin, cos, atan2, floor, radians, sqrt
+from math import pi, sin, cos, atan2, floor, radians, sqrt, degrees
 from random import randint
 
 from items import *
@@ -32,8 +32,8 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.rect.x = round(pos[0]) - self.rect.width
         self.rect.y = round(pos[1]) - self.rect.height
         self.x, self.y = pos[0] - self.rect.width // 2, pos[1] - self.rect.height // 2
-        self.rect.centerx = round(pos[0])
-        self.rect.centery = round(pos[1])
+        self.x = round(pos[0])
+        self.y = round(pos[1])
         self.hp = hp
         self.velocity = velocity
         self.default_velocity = velocity
@@ -86,6 +86,8 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                         t.hurt(self.weapon.damage)'''
 
     def try_to_attack(self):
+        if self.weapon is None:
+            return
         if self.weapon.attack_range >= self.distance(self.target.get_pos()):
             if not self.timers['base_attack_time'].is_started():
                 self.timers['base_attack_time'].args = (self.target,)
@@ -101,7 +103,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
 
     def distance(self, pos):  # Returns distance between self and pos
         return sqrt(
-            (self.rect.centerx - pos[0]) * (self.rect.centerx - pos[0]) + (self.rect.centery - pos[1]) * (self.rect.centery - pos[1]))
+            (self.x - pos[0]) * (self.x - pos[0]) + (self.y - pos[1]) * (self.y - pos[1]))
 
     def get_pos(self):  # Returns self pos
         return self.x, self.y
@@ -156,7 +158,8 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.conditions[WAITING] = not self.conditions[WAITING]
         self.timers['wait'].default_time = randint(50, 250)
         self.timers['wait'].reset()
-        self.random_rotation()
+        if not self.conditions[WAITING]:
+            self.random_rotation()
 
     def set_attribute(self, attribute, value):
         assert hasattr(self, attribute), f'{self.__class__} has no attribute named {attribute}'
@@ -171,6 +174,10 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
 
     def change_condition(self, condition, value):
         self.conditions[condition] = value
+
+    def reset_signals(self):
+        for signal in self.signals:
+            self.signals[signal] = None
 
 
 class Player(Entity):  # Player class
@@ -204,11 +211,11 @@ class Enemy(Entity):  # Enemy class
         else:
             self.timers['player_near'].stop()
             self.timers['player_near'].reset()
-        if (self.target.rect.centerx - self.rect.centerx) * (self.target.rect.centerx - self.rect.centerx) + (
-                self.target.rect.centery - self.rect.centery) * (
-                self.target.rect.centery - self.rect.centery) <= self.view_range * self.view_range:
-            dist_orient = atan2(-(self.target.rect.centerx - self.rect.centerx),
-                                self.target.rect.centery - self.rect.centery) * (180 / pi)
+        if (self.target.x - self.x) * (self.target.x - self.x) + (
+                self.target.y - self.y) * (
+                self.target.y - self.y) <= self.view_range * self.view_range:
+            dist_orient = atan2(-(self.target.x - self.x),
+                                self.target.y - self.y) * (180 / pi)
             ang_dist = dist_orient - (self.look_angle - 90) % 360
             ang_dist = ang_dist - 360 * floor((ang_dist + 180) * (1 / 360))
             if abs(ang_dist) <= self.fov:
@@ -226,7 +233,7 @@ class Enemy(Entity):  # Enemy class
         super().update()
 
         if not self.is_sleep():
-            if self.attacking:
+            if self.conditions[FIGHTING]:
                 self.move_to_target()
                 self.try_to_attack()
             else:

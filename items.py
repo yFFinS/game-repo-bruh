@@ -13,14 +13,12 @@ class Item(pygame.sprite.Sprite):
 
 
 class Weapon(Item):
-    def __init__(self, group, name, texture, size=None, damage=0, attack_speed=0, base_attack_time=0,
-                 attack_range=None,
-                 durability=0, special_effect=None):
+    def __init__(self, group, name, texture, size, attack_range, damage=0, attack_speed=0, base_attack_time=0,
+                 special_effect=None):
         super().__init__(group, name, texture, size)
         self.damage = damage
         self.attack_speed = attack_speed
         self.base_attack_time = base_attack_time
-        self.durability = durability
         self.special_effect = special_effect
         if attack_range is None:
             self.attack_range = max(size)
