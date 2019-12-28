@@ -88,7 +88,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
     def try_to_attack(self):
         if self.weapon is None:
             return
-        if self.weapon.attack_range >= self.distance(self.target.get_pos()):
+        if self.weapon.attack_range >= distance_between(self.target.get_pos(), self.get_pos()):
             if not self.timers['base_attack_time'].is_started():
                 self.timers['base_attack_time'].args = (self.target,)
                 self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
@@ -100,10 +100,6 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
             return self.rect.colliderect(other.hitbox)
         if type(other) == list and len(other) > 1:
             return self.rect.collidelist(other.hitbox)
-
-    def distance(self, pos):  # Returns distance between self and pos
-        return sqrt(
-            (self.x - pos[0]) * (self.x - pos[0]) + (self.y - pos[1]) * (self.y - pos[1]))
 
     def get_pos(self):  # Returns self pos
         return self.x, self.y
@@ -205,7 +201,7 @@ class Enemy(Entity):  # Enemy class
     def check_for_player(self):  # Checks for player in self line-of-sight
         if self.conditions[FIGHTING]:
             return
-        if self.distance(self.player.get_pos()) <= 50:
+        if distance_between(self.player.get_pos(), self.get_pos()) <= 300:
             if not self.timers['player_near'].is_started():
                 self.timers['player_near'].start()
         else:

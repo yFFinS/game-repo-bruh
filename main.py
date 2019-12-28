@@ -7,7 +7,7 @@ WIDTH = info.current_w
 HEIGHT = info.current_h
 size = WIDTH, HEIGHT
 screen = pygame.display.set_mode(size, pygame.FULLSCREEN | pygame.HWSURFACE, 32)
-FPS = 60
+FPS = 144
 PLAYER_TEXTURES = 'player.png'
 ENEMY_TEXTURES = {1: 'enemy1.png'}
 
@@ -48,22 +48,22 @@ class Game:  # Main class
             return
         if pygame.K_SPACE in self.keys_pressed:
             self.reset()
-
-        # Move calculation
-        move_d = [0, 0]
-        if pygame.K_UP in self.keys_pressed or pygame.K_w in self.keys_pressed:
-            move_d[1] = -1
-        if pygame.K_DOWN in self.keys_pressed or pygame.K_s in self.keys_pressed:
-            move_d[1] = 1
-        if pygame.K_RIGHT in self.keys_pressed or pygame.K_d in self.keys_pressed:
-            move_d[0] = 1
-        if pygame.K_LEFT in self.keys_pressed or pygame.K_a in self.keys_pressed:
-            move_d[0] = -1
-        if move_d[0] > 0:
-            self.player.look_angle = 0
-        elif move_d[0] < 0:
-            self.player.look_angle = 180
-        self.move(self.player, *move_d)
+        if not self.conditions[PAUSED]:
+            # Move calculation
+            move_d = [0, 0]
+            if pygame.K_UP in self.keys_pressed or pygame.K_w in self.keys_pressed:
+                move_d[1] = -1
+            if pygame.K_DOWN in self.keys_pressed or pygame.K_s in self.keys_pressed:
+                move_d[1] = 1
+            if pygame.K_RIGHT in self.keys_pressed or pygame.K_d in self.keys_pressed:
+                move_d[0] = 1
+            if pygame.K_LEFT in self.keys_pressed or pygame.K_a in self.keys_pressed:
+                move_d[0] = -1
+            if move_d[0] > 0:
+                self.player.look_angle = 0
+            elif move_d[0] < 0:
+                self.player.look_angle = 180
+            self.move(self.player, *move_d)
 
     def reset(self):
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
@@ -84,6 +84,8 @@ class Game:  # Main class
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(), self.player)
 
     def check_signals(self):
+        if self.conditions[PAUSED]:
+            return
         for entity in self.sprite_groups[ENTITIES]:
             if entity.signals[MOVE]:
                 self.move(entity, *entity.signals[MOVE])
@@ -100,7 +102,9 @@ class Game:  # Main class
             self.player_input()
 
             self.camera.update()
+
             self.update_sprites()
+
             self.check_signals()
 
             # Screen update
@@ -184,6 +188,8 @@ class Game:  # Main class
         visible_area.rect = pygame.rect.Rect([0, 0, WIDTH, HEIGHT])
         visible_sprites = pygame.sprite.Group(pygame.sprite.spritecollide(visible_area, self.sprite_groups[ALL], False))
         visible_sprites.draw(self.screen2)
+        for sprite in visible_sprites:
+            visible_sprites.remove(sprite)
 
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
@@ -206,12 +212,12 @@ class Game:  # Main class
         font = pygame.font.Font(None, 30)
         lines = list()
         lines.append(font.render('FPS: ' + str(int(self.clock.get_fps())), True, pygame.Color('red')))
-        lines.append(font.render('Entities: ' + str(len(self.sprite_groups[ENTITIES])), True, pygame.Color('red')))
+        '''lines.append(font.render('Entities: ' + str(len(self.sprite_groups[ENTITIES])), True, pygame.Color('red')))
         for num, ent in enumerate(self.sprite_groups[ENTITIES]):
             lines.append(font.render('Entity ' + str(num) + ' ' + str(ent.get_pos()), True, pygame.Color('red')))
         for attr, value in self.player.get_attribute():
             lines.append(font.render(str(attr).title() + ': ' + str(value)[:min(len(str(value)), 30)], True,
-                                     pygame.Color('red')))
+                                     pygame.Color('red')))'''
         for num, line in enumerate(lines):
             screen.blit(line, (10, num * 30 + 10))
 
