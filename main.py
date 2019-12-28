@@ -3,10 +3,9 @@ import pygame
 pygame.init()
 pygame.display.set_caption('Game')
 info = pygame.display.Info()
-WIDTH = info.current_w
-HEIGHT = info.current_h
-size = WIDTH, HEIGHT
-screen = pygame.display.set_mode(size, pygame.FULLSCREEN | pygame.HWSURFACE, 32)
+width = info.current_w
+height = info.current_h
+screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
 FPS = 144
 PLAYER_TEXTURES = 'player.png'
 ENEMY_TEXTURES = {1: 'enemy1.png'}
@@ -18,6 +17,7 @@ CHUNKS = 22
 RUNNING = 40
 PAUSED = 41
 DEBUGGING = 42
+FULLSCREEN = 43
 
 
 from entities import *
@@ -30,8 +30,21 @@ class Game:  # Main class
     def __init__(self):  # Init
 
         # FPS clock
+        self.screen = screen
+        self.width = width
+        self.height = height
         self.clock = pygame.time.Clock()
 
+        self.sprite_groups = None
+
+        self.conditions = None
+
+        self.keys_pressed = None
+
+        self.terrain = None
+        self.screen2 = None
+        self.player = None
+        self.camera = None
         self.reset()
         self.main()
 
@@ -48,6 +61,9 @@ class Game:  # Main class
             return
         if pygame.K_SPACE in self.keys_pressed:
             self.reset()
+        if pygame.K_F11 in self.keys_pressed:
+            self.fullscreen()
+
         if not self.conditions[PAUSED]:
             # Move calculation
             move_d = [0, 0]
@@ -70,6 +86,7 @@ class Game:  # Main class
 
         self.conditions = {k: False for k in range(40, 50)}
         self.conditions[RUNNING] = True
+        self.conditions[FULLSCREEN] = True
 
         self.keys_pressed = []
 
@@ -77,11 +94,29 @@ class Game:  # Main class
         self.sprite_groups[CHUNKS] = pygame.sprite.Group(self.terrain.chunks)
         for chunk in self.sprite_groups[CHUNKS]:
             self.sprite_groups[ALL].add(chunk)
-        self.screen2 = pygame.Surface((WIDTH, HEIGHT), pygame.HWSURFACE, 32)
+        self.screen2 = pygame.Surface((self.width, self.height), pygame.HWSURFACE, 32)
         self.player = Player((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]),
                              (self.terrain.get_width() // 2, self.terrain.get_height() // 2), PLAYER_TEXTURES,
                              (50, 50), velocity=200)
-        self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(), self.player)
+        self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
+                             self.player, self.width // 2, self.height // 2)
+
+    def resize_window(self, w, h):
+        self.width, self.height = w, h
+        self.screen = pygame.display.set_mode((w, h), pygame.HWSURFACE | pygame.RESIZABLE, 32)
+        self.camera.centerx = self.width // 2
+        self.camera.centery = self.height // 2
+
+    def fullscreen(self):
+        if self.conditions[FULLSCREEN]:
+            self.resize_window(self.width, self.height)
+        else:
+            self.resize_window(width, height)
+            self.screen = pygame.display.set_mode((width, height),
+                                                  pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
+            self.camera.centerx = self.width // 2
+            self.camera.centery = self.height // 2
+        self.conditions[FULLSCREEN] = not self.conditions[FULLSCREEN]
 
     def check_signals(self):
         if self.conditions[PAUSED]:
@@ -96,7 +131,6 @@ class Game:  # Main class
     def main(self):  # Main
 
         while self.conditions[RUNNING]:  # Main loop
-
             self.process_events()  # Process events
 
             self.player_input()
@@ -108,7 +142,7 @@ class Game:  # Main class
             self.check_signals()
 
             # Screen update
-            screen.blit(self.screen2, (0, 0))
+            self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
                 self.debug()
             pygame.display.flip()
@@ -193,7 +227,7 @@ class Game:  # Main class
         if not self.conditions[PAUSED]:
             self.sprite_groups[ALL].update()
         visible_area = pygame.sprite.Sprite()
-        visible_area.rect = pygame.rect.Rect([0, 0, WIDTH, HEIGHT])
+        visible_area.rect = pygame.rect.Rect([0, 0, self.width, self.height])
         visible_sprites = pygame.sprite.Group(pygame.sprite.spritecollide(visible_area, self.sprite_groups[ALL], False))
         visible_sprites.draw(self.screen2)
         for sprite in visible_sprites:
@@ -228,7 +262,7 @@ class Game:  # Main class
             lines.append(font.render(str(attr).title() + ': ' + str(value)[:min(len(str(value)), 30)], True,
                                      pygame.Color('red')))'''
         for num, line in enumerate(lines):
-            screen.blit(line, (10, num * 30 + 10))
+            self.screen.blit(line, (10, num * 30 + 10))
 
     def process_events(self):  # Process all events
         for event in pygame.event.get():
@@ -260,6 +294,10 @@ class Game:  # Main class
                 if event.button == pygame.BUTTON_RIGHT and pygame.key.get_mods() & pygame.KMOD_SHIFT:
                     self.delete_enemy(self.camera.apply_pos(event.pos))
 
+            if event.type == pygame.VIDEORESIZE:
+                if not self.conditions[FULLSCREEN]:
+                    self.resize_window(event.w, event.h)
 
-if __name__ == '__main__':  # Main
+
+if __name__ == '__main__':
     game = Game()

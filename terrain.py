@@ -4,7 +4,7 @@ import pygame
 
 from functions import load_image
 
-TILE_SIZE = 50
+TILE_SIZE = 64
 
 
 def neighbours(grid, x, y):
