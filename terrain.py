@@ -8,7 +8,8 @@ TILE_SIZE = 50
 
 
 def neighbours(grid, x, y):
-    return set([grid[y + dy][x + dx] for dx in [-1, 0, 1] if -1 < x + dx < len(grid[0]) for dy in [-1, 0, 1] if -1 < y + dy < len(grid)])
+    return set([grid[y + dy][x + dx] for dx in [-1, 0, 1] if -1 < x + dx < len(grid[0]) for dy in [-1, 0, 1] if
+                -1 < y + dy < len(grid)])
 
 
 def generate_terrain(width, height):
@@ -19,13 +20,26 @@ def generate_terrain(width, height):
                 grid[y][x] = 2
     for x in range(width):
         for y in range(height):
-            nb = neighbours(grid, x, y)
-            if 2 in nb:
-                if random.random() < 0.35:
-                    grid[y][x] = 2
-                else:
-                    grid[y][x] = 1
+            if grid[y][x] == 2:
+                noise(grid, x, y)
     return grid
+
+
+def noise(grid, x, y, type=2):
+    if random.random() < 0.23:
+        grid[y][x] = random.choice([type, 3])
+        len_x, len_y = len(grid[0]), len(grid)
+        if y + 1 < len_y:
+            noise(grid, x, y + 1)
+        if y - 1 > -1:
+            noise(grid, x, y - 1)
+        if x + 1 < len_x:
+            noise(grid, x + 1, y)
+        if x - 1 > -1:
+            noise(grid, x - 1, y)
+    else:
+        if grid[y][x] == 0:
+            grid[y][x] = type - 1
 
 
 class Terrain:
@@ -34,11 +48,15 @@ class Terrain:
         self.height = height_tiles
         self.tile_size = TILE_SIZE
         self.grid = self.random_terrain()
-        self.grid[27][27] = TILES[1]
-        self.chunks = [[Chunk((16 * TILE_SIZE * x, 16 * TILE_SIZE * y),
+        self.chunks = [[Chunk((16 * self.tile_size * x, 16 * self.tile_size * y),
                               [[self.grid[i][j] for j in range(16 * x, 16 * (x + 1))] for i in
                                range(16 * y, 16 * (y + 1))])
                         for y in range(width_tiles // 16)] for x in range(height_tiles // 16)]
+        self.walls = pygame.sprite.Group()
+        for pos in self.get_walls():
+            wall = pygame.sprite.Sprite()
+            wall.rect = pygame.rect.Rect([pos[0] * self.tile_size, pos[1] * self.tile_size, self.tile_size, self.tile_size])
+            self.walls.add(wall)
 
     def get_width(self):
         return self.width * self.tile_size
@@ -49,6 +67,13 @@ class Terrain:
     def random_terrain(self):
         terrain = generate_terrain(self.width, self.height)
         return [[TILES[terrain[y][x]] for x in range(self.width)] for y in range(self.height)]
+
+    def get_walls(self):
+        return [(x, y) for x in range(self.width)
+                for y in range(self.height) if not self.grid[y][x].transparent]
+
+    def collide_walls(self, sprite):
+        return pygame.sprite.spritecollideany(sprite, self.walls) is not None
 
 
 class Tile:

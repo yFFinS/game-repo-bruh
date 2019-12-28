@@ -1,4 +1,5 @@
 from main import WIDTH, HEIGHT
+import pygame
 
 
 class Camera:
@@ -25,14 +26,9 @@ class Camera:
             else:
                 self.y = self.h - HEIGHT // 2
 
-    def fix_sprite(self, sprite):
-        if hasattr(sprite, 'x') and hasattr(sprite, 'y'):
-            sprite.x += -(self.x - WIDTH // 2)
-            sprite.y += -(self.y - HEIGHT // 2)
-            sprite.rect = sprite.rect.move(round(sprite.x - sprite.rect.centerx), round(sprite.y - sprite.rect.centery))
-
-    def apply_pos(self, pos):
-        return pos[0] + self.x - WIDTH // 2, pos[1] + self.y - HEIGHT // 2
+    def apply_pos(self, pos, reverse=False):
+        q = 1 if not reverse else -1
+        return pos[0] + q * (self.x - WIDTH // 2), pos[1] + q * (self.y - HEIGHT // 2)
     
     def apply_sprite(self, sprite, reverse=False):
         q = 1 if not reverse else -1
@@ -46,3 +42,9 @@ class Camera:
             sprite.rect = sprite.rect.move(sprite.x - sprite.rect.centerx, sprite.y - sprite.rect.centery)
         else:
             sprite.rect = sprite.rect.move((round(self.dx), round(self.dy)))'''
+
+    def normalized(self, sprite):
+        new_sprite = pygame.sprite.Sprite()
+        new_sprite.rect = sprite.rect.move(((self.x - WIDTH // 2), (self.y - HEIGHT // 2)))
+
+        return new_sprite

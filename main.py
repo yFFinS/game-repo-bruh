@@ -131,8 +131,16 @@ class Game:  # Main class
                             y1 + dy * velocity / max(self.clock.get_fps(), 5)))
             sprite.rect.x = round(x2)
             sprite.x = x2
+            if self.terrain.collide_walls(sprite):
+                sprite.rect.x = round(x1)
+                sprite.x = x1
+                x2 = x1
             sprite.rect.y = round(y2)
             sprite.y = y2
+            if self.terrain.collide_walls(sprite):
+                sprite.rect.y = round(y1)
+                sprite.y = y1
+                y2 = y1
             collided = pygame.sprite.spritecollide(sprite, self.sprite_groups[ENTITIES], False)
             if len(collided) > 1:
                 for spr in collided:
@@ -212,6 +220,7 @@ class Game:  # Main class
         font = pygame.font.Font(None, 30)
         lines = list()
         lines.append(font.render('FPS: ' + str(int(self.clock.get_fps())), True, pygame.Color('red')))
+        lines.append(font.render('Rect: ' + str(self.player.rect), True, pygame.Color('red')))
         '''lines.append(font.render('Entities: ' + str(len(self.sprite_groups[ENTITIES])), True, pygame.Color('red')))
         for num, ent in enumerate(self.sprite_groups[ENTITIES]):
             lines.append(font.render('Entity ' + str(num) + ' ' + str(ent.get_pos()), True, pygame.Color('red')))
