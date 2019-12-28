@@ -5,7 +5,8 @@ pygame.display.set_caption('Game')
 info = pygame.display.Info()
 width = info.current_w
 height = info.current_h
-screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
+screen = pygame.display.set_mode((width, height),
+                                 pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
 FPS = 144
 PLAYER_TEXTURES = 'player.png'
 ENEMY_TEXTURES = {1: 'enemy1.png'}
@@ -18,10 +19,12 @@ RUNNING = 40
 PAUSED = 41
 DEBUGGING = 42
 FULLSCREEN = 43
+INMENU = 44
 
 
 from entities import *
 from terrain import Terrain
+from menu import Menu
 from camera import *
 from functions import *
 
@@ -45,10 +48,11 @@ class Game:  # Main class
         self.screen2 = None
         self.player = None
         self.camera = None
+        self.menu = Menu()
         self.reset()
         self.main()
 
-    def player_input(self):
+    def handle_keys(self):
         if pygame.K_F3 in self.keys_pressed:
             self.conditions[DEBUGGING] = not self.conditions[DEBUGGING]
             self.keys_pressed.remove(pygame.K_F3)
@@ -56,13 +60,14 @@ class Game:  # Main class
             self.conditions[PAUSED] = not self.conditions[PAUSED]
             self.keys_pressed.remove(pygame.K_PAUSE)
         if pygame.K_ESCAPE in self.keys_pressed:
-            self.conditions[RUNNING] = False
             self.keys_pressed.remove(pygame.K_ESCAPE)
-            return
+            self.open_menu()
         if pygame.K_SPACE in self.keys_pressed:
+            self.keys_pressed.remove(pygame.K_SPACE)
             self.reset()
         if pygame.K_F11 in self.keys_pressed:
             self.fullscreen()
+            self.keys_pressed.remove(pygame.K_F11)
 
         if not self.conditions[PAUSED]:
             # Move calculation
@@ -82,6 +87,11 @@ class Game:  # Main class
             self.move(self.player, *move_d)
 
     def reset(self):
+        self.menu.add_button('Продолжить', (self.width // 2 - 150, 200), target=self.open_menu)
+        self.menu.add_button('Настройки')
+        self.menu.add_button('Чето')
+        self.menu.add_button('Выйти их игры', target=self.terminate)
+
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
 
         self.conditions = {k: False for k in range(40, 50)}
@@ -101,6 +111,10 @@ class Game:  # Main class
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
                              self.player, self.width // 2, self.height // 2)
 
+    def open_menu(self):
+        self.conditions[INMENU] = not self.conditions[INMENU]
+        self.conditions[PAUSED] = True if self.conditions[INMENU] else False
+
     def resize_window(self, w, h):
         self.width, self.height = w, h
         self.screen = pygame.display.set_mode((w, h), pygame.HWSURFACE | pygame.RESIZABLE, 32)
@@ -112,15 +126,16 @@ class Game:  # Main class
             self.resize_window(self.width, self.height)
         else:
             self.resize_window(width, height)
-            self.screen = pygame.display.set_mode((width, height),
-                                                  pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
+            self.screen = pygame.display.set_mode(
+                (width, height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
             self.camera.centerx = self.width // 2
             self.camera.centery = self.height // 2
         self.conditions[FULLSCREEN] = not self.conditions[FULLSCREEN]
 
-    def check_signals(self):
-        if self.conditions[PAUSED]:
-            return
+    def terminate(self):
+        self.conditions[RUNNING] = False
+
+    def handle_signals(self):
         for entity in self.sprite_groups[ENTITIES]:
             if entity.signals[MOVE]:
                 self.move(entity, *entity.signals[MOVE])
@@ -132,15 +147,15 @@ class Game:  # Main class
 
         while self.conditions[RUNNING]:  # Main loop
             self.process_events()  # Process events
+            self.handle_keys()
+            if not self.conditions[PAUSED]:
 
-            self.player_input()
+                self.camera.update()
 
-            self.camera.update()
+                self.update_sprites()
 
-            self.update_sprites()
-
-            self.check_signals()
-
+                self.handle_signals()
+            self.render_sprites()
             # Screen update
             self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
@@ -224,14 +239,22 @@ class Game:  # Main class
     def update_sprites(self):
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite)
-        if not self.conditions[PAUSED]:
-            self.sprite_groups[ALL].update()
+        self.sprite_groups[ALL].update()
+        for sprite in self.sprite_groups[ALL]:
+            self.camera.apply_sprite(sprite, True)
+
+    def render_sprites(self):
+        for sprite in self.sprite_groups[ALL]:
+            self.camera.apply_sprite(sprite)
         visible_area = pygame.sprite.Sprite()
         visible_area.rect = pygame.rect.Rect([0, 0, self.width, self.height])
         visible_sprites = pygame.sprite.Group(pygame.sprite.spritecollide(visible_area, self.sprite_groups[ALL], False))
         visible_sprites.draw(self.screen2)
         for sprite in visible_sprites:
             visible_sprites.remove(sprite)
+
+        if self.conditions[INMENU]:
+            self.menu.render(self.screen2)
 
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
@@ -267,6 +290,8 @@ class Game:  # Main class
     def process_events(self):  # Process all events
         for event in pygame.event.get():
             # Check for quit
+            if self.conditions[INMENU]:
+                self.menu.click(pygame.mouse.get_pos())
             if event.type == pygame.QUIT:
                 self.conditions[RUNNING] = False
                 break
@@ -283,17 +308,24 @@ class Game:  # Main class
             # Check for mouse button pressed
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
-                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                        self.create_enemy(self.camera.apply_pos(event.pos), size=(50, 50),
-                                          player=self.player, velocity=60,
-                                          texture=ENEMY_TEXTURES[1])
-                    elif pygame.key.get_mods() & pygame.KMOD_CTRL:
-                        self.change_camera_target(self.camera.apply_pos(event.pos))
+                    if self.conditions[INMENU]:
+                        self.menu.click(event.pos, event.type, event.button)
                     else:
-                        self.player.start_attacking()
+                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                            self.create_enemy(self.camera.apply_pos(event.pos), size=(50, 50),
+                                              player=self.player, velocity=60,
+                                              texture=ENEMY_TEXTURES[1])
+                        elif pygame.key.get_mods() & pygame.KMOD_CTRL:
+                            self.change_camera_target(self.camera.apply_pos(event.pos))
+                        else:
+                            self.player.start_attacking()
                 if event.button == pygame.BUTTON_RIGHT and pygame.key.get_mods() & pygame.KMOD_SHIFT:
                     self.delete_enemy(self.camera.apply_pos(event.pos))
 
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == pygame.BUTTON_LEFT:
+                    if self.conditions[INMENU]:
+                        self.menu.click(event.pos, event.type, event.button)
             if event.type == pygame.VIDEORESIZE:
                 if not self.conditions[FULLSCREEN]:
                     self.resize_window(event.w, event.h)

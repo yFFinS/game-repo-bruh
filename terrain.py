@@ -16,7 +16,7 @@ def generate_terrain(width, height):
     grid = [[0] * width for _ in range(height)]
     for x in range(width):
         for y in range(height):
-            if random.random() < 0.05:
+            if random.random() < 0.01:
                 grid[y][x] = 2
     for x in range(width):
         for y in range(height):
@@ -26,7 +26,7 @@ def generate_terrain(width, height):
 
 
 def noise(grid, x, y, type=2):
-    if random.random() < 0.23:
+    if random.random() < 0.235:
         grid[y][x] = random.choice([type, 3])
         len_x, len_y = len(grid[0]), len(grid)
         if y + 1 < len_y:
