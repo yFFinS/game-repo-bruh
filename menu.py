@@ -45,23 +45,34 @@ class Button(pygame.sprite.Sprite):
         y = (self.rect.h - line_rect.h) // 2
         self.image.blit(line, (x, y))
 
-    def update(self, pos, type=None, button=None):
-        if self.rect.collidepoint(*pos):
-            if type is None:
-                if not self.mouse_in:
-                    self.mouse_in = True
-                    self.reload_image(192)
-
-            if type == pygame.MOUSEBUTTONDOWN and button == pygame.BUTTON_LEFT:
+    def update(self, pos, event_type=None, event_button=None):
+        if event_type == pygame.MOUSEBUTTONDOWN and event_button == pygame.BUTTON_LEFT:
+            if self.rect.collidepoint(*pos):
                 if not self.pressed:
                     self.pressed = True
                     self.reload_image(246)
-            if type == pygame.MOUSEBUTTONUP and button == pygame.BUTTON_LEFT and self.pressed:
+            else:
+                self.reload_image()
+                self.mouse_in = False
+                self.pressed = False
+
+        if event_type == pygame.MOUSEBUTTONUP and event_button == pygame.BUTTON_LEFT:
+            if self.rect.collidepoint(*pos) and self.pressed:
                 self.pressed = False
                 self.reload_image()
                 if self.target is not None:
                     self.target()
-        else:
-            if self.mouse_in:
-                self.mouse_in = False
+            else:
                 self.reload_image()
+                self.mouse_in = False
+                self.pressed = False
+        if event_type is None:
+            if self.rect.collidepoint(*pos):
+                if not self.mouse_in:
+                    self.mouse_in = True
+                    if not self.pressed:
+                        self.reload_image(192)
+            else:
+                if not self.pressed:
+                    self.reload_image()
+                self.mouse_in = False
