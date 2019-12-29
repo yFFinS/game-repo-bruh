@@ -1,20 +1,21 @@
 
-from math import pi, sin, cos, atan2, floor, radians, sqrt, degrees
+from math import pi, floor
 from random import randint
-
-from items import *
 
 from functions import *
 
+PLAYER_TEXTURES = 'player.png'
+ENEMY_TEXTURES = {1: 'enemy1.png'}
 
-WEAPON_TEXTURES = {1: 'images/test_weapon.png', 2: 'images/test_weapon2.png'}
 WAITING = 0
 INVULNERABILITY = 1
 IMMOVABLE = 2
 FIGHTING = 3
+CANRANGEATTACK = 4
 
 MOVE = 60
-MOVE_TO = 61
+MOVETO = 61
+LAUNCH = 62
 
 SIDE = 70
 UP = 71
@@ -42,11 +43,12 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.look_angle = 0
         self.weapon = None
         self.target = None
+        self.team = 0
         self.timers = {'sleep_timer': Timer(100),
                        'wait': Timer(200, target=self.wait, mode=1),
                        'attack_time': Timer(30),
                        'base_attack_time': Timer(10, target=self.start_attack_animation),
-                       'invul_frames': Timer(20, target=self.set_attribute,
+                       'invul_frames': Timer(20, target=self.change_condition,
                                              args=(self.conditions[INVULNERABILITY], False))}
 
     def start_attack_animation(self):
@@ -93,6 +95,15 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                 self.timers['base_attack_time'].args = (self.target,)
                 self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
 
+    def try_range_attack(self):
+        if not self.conditions[CANRANGEATTACK]:
+            return
+        if distance_between(self.get_pos(), self.target.get_pos()) <= 1500:
+            self.launch_projectile(0, self.target.get_pos())
+            self.conditions[CANRANGEATTACK] = False
+            self.timers['launch_time'].start()
+            return True
+
     def collision(self, other):  # Checks for collision with point / entity / entity list
         if type(other) == tuple:
             return self.rect.collidepoint(*other)
@@ -116,13 +127,16 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
     def is_sleep(self):  # Returns True if self is sleeping
         return self.timers['sleep_timer'].is_started()
 
-    def kill(self):  # Kills self
-        self.hp = 0
-
     def hurt(self, damage):  # Gets damaged
         self.hp = max(0, self.hp - damage)
+        if self.hp == 0:
+            self.kill()
+            return
         self.conditions[INVULNERABILITY] = True
         self.timers['invul_frames'].start()
+    
+    def launch_projectile(self, projectile_id, pos):
+        self.signals[LAUNCH] = (projectile_id, pos)
 
     def update(self):  # Updates self
         if -90 <= self.look_angle <= 90:
@@ -158,7 +172,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
             self.random_rotation()
 
     def set_attribute(self, attribute, value):
-        assert hasattr(self, attribute), f'{self.__class__} has no attribute named {attribute}'
+        assert hasattr(self, attribute), str(self.__class__) + 'has no attribute named' + attribute
         setattr(self, attribute, value)
 
     def get_attribute(self, attribute=None):
@@ -175,16 +189,33 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         for signal in self.signals:
             self.signals[signal] = None
 
+    def move_from(self, pos):
+        dx = -cos(angle_between(self.get_pos(), pos))
+        dy = -sin(angle_between(self.get_pos(), pos))
+        self.signals[MOVE] = (dx, dy)
+
 
 class Player(Entity):  # Player class
-    def __init__(self, groups, pos, texture, size, velocity=300, hp=100):
-        super().__init__(groups, pos, texture, size, velocity, hp)
+    def __init__(self, groups, pos):
+        super().__init__(groups, pos, PLAYER_TEXTURES, (50, 50), 300, 300)
         self.enemies = None
+        self.team = 1
+        self.conditions[CANRANGEATTACK] = True
+        self.timers['launch_time'] = Timer(150, target=self.change_condition,
+                                           args=(CANRANGEATTACK, True))
 
     def start_attacking(self):
         if not self.timers['attack_time'].is_started():
             self.timers['base_attack_time'].start()
             self.timers['attack_time'].args = (self.enemies,)
+
+    def try_range_attack(self, pos):
+        if not self.conditions[CANRANGEATTACK]:
+            return
+        self.launch_projectile(0, pos)
+        self.conditions[CANRANGEATTACK] = False
+        self.timers['launch_time'].start()
+        return True
 
 
 class Enemy(Entity):  # Enemy class
@@ -223,61 +254,49 @@ class Enemy(Entity):  # Enemy class
         self.signals[MOVE] = (dx, dy)
 
     def move_to_target(self):  # Moves self toward target
-        self.signals[MOVE_TO] = self.target.get_pos()
+        self.signals[MOVETO] = self.target.get_pos()
 
     def update(self):  # Updates self + AI
         super().update()
-
         if not self.is_sleep():
             if self.conditions[FIGHTING]:
+                self.look_angle = degrees(angle_between(self.get_pos(), self.target.get_pos()))
+                self.rotate(0)
+            self.ai()
+
+    def ai(self):
+        if self.conditions[FIGHTING]:
+            attacked = self.try_range_attack()
+            if not attacked:
                 self.move_to_target()
                 self.try_to_attack()
-            else:
-                if not self.conditions[WAITING]:
-                    self.move_forward()
-                self.check_for_player()
+        else:
+            if not self.conditions[WAITING]:
+                self.move_forward()
+            self.check_for_player()
 
     def hurt(self, damage):  # Gets damaged
         self.change_condition(FIGHTING, True)
         super().hurt(damage)
 
 
-class Timer:  # Timer class
-    def __init__(self, time, target=None, args=tuple(), mode=0):
-        self.default_time = time
-        self.time = time
-        self.started = False
-        self.mode = mode
-        self.target = target
-        self.args = args
+class Mage1(Enemy):
+    def __init__(self, groups, pos, player=None):
+        super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 150, 150, player=player)
+        self.conditions[CANRANGEATTACK] = True
+        self.timers['launch_time'] = Timer(150, target=self.change_condition,
+                                           args=(CANRANGEATTACK, True))
 
-    def get_time(self):
-        return self.time
+    def ai(self):
+        if self.conditions[FIGHTING]:
+            attacked = self.try_range_attack()
+            if not attacked:
+                if distance_between(self.get_pos(), self.target.get_pos()) > 600:
+                    self.move_to_target()
+                if distance_between(self.get_pos(), self.target.get_pos()) < 250:
+                    self.move_from(self.target.get_pos())
 
-    def tick(self, time=1):
-        if self.time > 0:
-            self.time -= time
         else:
-            if self.mode == 0:
-                self.stop()
-            if self.target is not None:
-                if self.args:
-                    self.target(*self.args)
-                else:
-                    self.target()
-                self.reset()
-                return True
-
-    def reset(self):
-        self.time = self.default_time
-
-    def start(self, time=0):
-        self.started = True
-        if time != 0:
-            self.time = time
-
-    def stop(self):
-        self.started = False
-
-    def is_started(self):
-        return self.started
+            if not self.conditions[WAITING]:
+                self.move_forward()
+            self.check_for_player()

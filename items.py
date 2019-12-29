@@ -1,6 +1,7 @@
 import pygame
 
 from functions import load_image
+WEAPON_TEXTURES = {1: 'images/test_weapon.png', 2: 'images/test_weapon2.png'}
 
 
 class Item(pygame.sprite.Sprite):

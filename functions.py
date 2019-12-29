@@ -1,6 +1,6 @@
 import pygame
 import os
-import math
+from math import sqrt, atan2, sin, cos, degrees, radians
 
 
 def load_image(name):
@@ -13,8 +13,49 @@ def reverse_image(image):
 
 
 def angle_between(pos1, pos2):
-    return math.atan2(pos2[1] - pos1[1], pos2[0] - pos1[0])
+    return atan2(pos2[1] - pos1[1], pos2[0] - pos1[0])
 
 
 def distance_between(pos1, pos2):
-    return math.sqrt((pos1[0] - pos2[0]) * (pos1[0] - pos2[0]) + (pos1[1] - pos2[1]) * (pos1[1] - pos2[1]))
+    return sqrt((pos1[0] - pos2[0]) * (pos1[0] - pos2[0]) + (pos1[1] - pos2[1]) * (pos1[1] - pos2[1]))
+
+
+class Timer:  # Timer class
+    def __init__(self, time, target=None, args=tuple(), mode=0):
+        self.default_time = time
+        self.time = time
+        self.started = False
+        self.mode = mode
+        self.target = target
+        self.args = args
+
+    def get_time(self):
+        return self.time
+
+    def tick(self, time=1):
+        if self.time > 0:
+            self.time -= time
+        else:
+            if self.mode == 0:
+                self.stop()
+            if self.target is not None:
+                if self.args:
+                    self.target(*self.args)
+                else:
+                    self.target()
+                self.reset()
+                return True
+
+    def reset(self):
+        self.time = self.default_time
+
+    def start(self, time=0):
+        self.started = True
+        if time != 0:
+            self.time = time
+
+    def stop(self):
+        self.started = False
+
+    def is_started(self):
+        return self.started

@@ -34,18 +34,3 @@ class Camera:
     def apply_sprite(self, sprite, reverse=False):
         q = 1 if not reverse else -1
         sprite.rect = sprite.rect.move((q * -(self.x - self.centerx), q * -(self.y - self.centery)))
-        '''if hasattr(sprite, 'x') and hasattr(sprite, 'y'):
-            sprite.x += q * -(self.x - self.centerx)
-            sprite.y += q * -(self.y - self.centery)'''
-        '''if hasattr(sprite, 'x') and hasattr(sprite, 'y'):
-            sprite.x += q * self.dx
-            sprite.y += q * self.dy
-            sprite.rect = sprite.rect.move(sprite.x - sprite.rect.centerx, sprite.y - sprite.rect.centery)
-        else:
-            sprite.rect = sprite.rect.move((round(self.dx), round(self.dy)))'''
-
-    def normalized(self, sprite):
-        new_sprite = pygame.sprite.Sprite()
-        new_sprite.rect = sprite.rect.move(((self.x - self.centerx), (self.y - self.centery)))
-
-        return new_sprite
