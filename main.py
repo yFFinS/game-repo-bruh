@@ -90,7 +90,7 @@ class Game:  # Main class
         self.menu.add_button('Продолжить', (self.width // 2 - 150, 200), target=self.open_menu)
         self.menu.add_button('Настройки')
         self.menu.add_button('Чето')
-        self.menu.add_button('Выйти их игры', target=self.terminate)
+        self.menu.add_button('Выйти из игры', target=self.terminate)
 
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
 
@@ -118,6 +118,7 @@ class Game:  # Main class
     def resize_window(self, w, h):
         self.width, self.height = w, h
         self.screen = pygame.display.set_mode((w, h), pygame.HWSURFACE | pygame.RESIZABLE, 32)
+        self.screen2 = pygame.Surface((self.width, self.height), pygame.HWSURFACE, 32)
         self.camera.centerx = self.width // 2
         self.camera.centery = self.height // 2
 
@@ -125,9 +126,10 @@ class Game:  # Main class
         if self.conditions[FULLSCREEN]:
             self.resize_window(self.width, self.height)
         else:
-            self.resize_window(width, height)
+            self.width, self.height = width, height
             self.screen = pygame.display.set_mode(
                 (width, height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
+            self.screen2 = pygame.Surface((width, height), pygame.HWSURFACE, 32)
             self.camera.centerx = self.width // 2
             self.camera.centery = self.height // 2
         self.conditions[FULLSCREEN] = not self.conditions[FULLSCREEN]

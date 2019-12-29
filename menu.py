@@ -4,20 +4,49 @@ import pygame
 class Menu:
     def __init__(self):
         self.buttons = pygame.sprite.Group()
+        self.background_group = pygame.sprite.GroupSingle()
+        self.bg = pygame.sprite.Sprite()
+        self.bg.image = pygame.Surface((1000, 1000), pygame.SRCALPHA, 32)
+        self.bg.rect = pygame.rect.Rect([0, 0, 1000, 1000])
+        pygame.draw.rect(self.bg.image, (0, 0, 0, 64), self.bg.rect)
+        self.background_group.add(self.bg)
+
+        self.interval = 36
 
     def add_button(self, text, pos=None, w=350, h=100, target=None, font_size=50):
         if pos is None:
             if len(self.buttons):
                 b = list(self.buttons)[-1]
                 pos = b.rect.topleft
-                pos = pos[0], pos[1] + 35 + h
+                pos = pos[0], pos[1] + self.interval + h
             else:
                 pos = (0, 0)
 
         self.buttons.add(Button(text, pos, w, h, target, font_size))
 
     def render(self, screen):
+        w, h = screen.get_width(), screen.get_height()
+        if self.bg.rect.w != w or self.bg.rect.h != h:
+            self.bg.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+            self.bg.rect = pygame.rect.Rect([0, 0, w, h])
+            pygame.draw.rect(self.bg.image, (0, 0, 0, 128), self.bg.rect)
+            self.center_buttons(w, h)
+        self.background_group.draw(screen)
         self.buttons.draw(screen)
+
+    def center_buttons(self, width, height):
+        b_len = len(self.buttons)
+        if b_len == 0:
+            return
+        for b in self.buttons:
+            b.center(width, height)
+        prev_b = None
+        for b in self.buttons:
+            if prev_b is None:
+                b.rect.y = (height - (sum(i.rect.h for i in self.buttons) + self.interval * (b_len - 1))) // 2
+            else:
+                b.rect.y = prev_b.rect.y + self.interval + prev_b.rect.h
+            prev_b = b
 
     def click(self, pos, type=None, button=None):
         self.buttons.update(pos, type, button)
@@ -26,7 +55,7 @@ class Menu:
 class Button(pygame.sprite.Sprite):
     def __init__(self, text, pos, w, h, target=None, font_size=50):
         super().__init__()
-        self.image = pygame.Surface((w, h), pygame.SRCALPHA)
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
         self.rect = pygame.rect.Rect([*pos, w, h])
         self.text = text
         self.text_color = pygame.Color('Black')
@@ -44,6 +73,9 @@ class Button(pygame.sprite.Sprite):
         x = (self.rect.w - line_rect.w) // 2
         y = (self.rect.h - line_rect.h) // 2
         self.image.blit(line, (x, y))
+
+    def center(self, width, height):
+        self.rect.topleft = (width - self.rect.w) // 2, (height - self.rect.height) // 2
 
     def update(self, pos, event_type=None, event_button=None):
         if event_type == pygame.MOUSEBUTTONDOWN and event_button == pygame.BUTTON_LEFT:
