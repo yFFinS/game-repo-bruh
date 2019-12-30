@@ -2,6 +2,8 @@ import pygame
 import os
 from math import sqrt, atan2, sin, cos, degrees, radians
 
+TRANSPARENT = {0}
+
 
 def load_image(name):
     image = pygame.image.load(os.path.join('images', name)).convert_alpha()

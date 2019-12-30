@@ -1,9 +1,9 @@
 from functions import *
-from entities import MOVE
+from entities import MOVE, MOVETO
 
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, groups, texture, size, velocity=50, live_time=1000, damage=0, team=0, **kwargs):
+    def __init__(self, groups, texture, size, velocity=50, live_time=1000, damage=0, team=0, mods={}):
         super().__init__(*groups)
         self.image = pygame.transform.scale(texture, size)
         self.rect = self.image.get_rect()
@@ -14,8 +14,13 @@ class Projectile(pygame.sprite.Sprite):
         self.dx, self.dy = 0, 0
         self.x, self.y = 0, 0
         self.team = team
+        self.mods = mods
 
-    def launch(self, pos1, pos2):
+    def launch(self, pos1, p2):
+        if type(p2) is not tuple:
+            pos2 = p2.get_pos()
+        else:
+            pos2 = p2
         angle = angle_between(pos1, pos2)
         self.dx = cos(angle)
         self.dy = sin(angle)
@@ -25,6 +30,9 @@ class Projectile(pygame.sprite.Sprite):
     def update(self, *args):
         for timer in self.timers.values():
             timer.tick()
+        self.move()
+
+    def move(self):
         self.signals[MOVE] = (self.dx, self.dy)
 
     def reset_signals(self):
@@ -34,11 +42,25 @@ class Projectile(pygame.sprite.Sprite):
     def collision(self, group):
         collided = [sprite for sprite in pygame.sprite.spritecollide(self, group, False) if sprite.team != self.team]
         if collided:
-            self.kill()
+            self.timers['live_time'].time = min(self.timers['live_time'].time, 10)
         return collided
 
     def get_pos(self):
         return self.x, self.y
+
+
+class HomingProjectile(Projectile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.target = None
+
+    def launch(self, pos1, target):
+        self.rect.centerx, self.rect.centery = round(pos1[0]), round(pos1[1])
+        self.x, self.y = pos1
+        self.target = target
+
+    def move(self):
+        self.signals[MOVETO] = self.target.get_pos()
 
 
 class Fireball(Projectile):
@@ -46,5 +68,11 @@ class Fireball(Projectile):
         super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 350, 25, team)
 
 
-PROJECTILE_TEXTURES = {0: load_image('fireball.png')}
-PROJECTILE_IDS = {0: Fireball}
+class Skull(HomingProjectile):
+    def __init__(self, groups, team=0):
+        super().__init__(groups, PROJECTILE_TEXTURES[1], (60, 60), 50, 1500, 200, team)
+        self.mods = TRANSPARENT
+
+
+PROJECTILE_TEXTURES = {0: load_image('fireball.png'), 1: load_image('skull.png')}
+PROJECTILE_IDS = {0: Fireball, 1: Skull}

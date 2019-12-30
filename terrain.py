@@ -18,10 +18,11 @@ def generate_terrain(width, height):
         for y in range(height):
             if random.random() < 0.01:
                 grid[y][x] = 2
-    for x in range(width):
-        for y in range(height):
-            if grid[y][x] == 2:
-                noise(grid, x, y)
+    for _ in range(3):
+        for x in range(width):
+            for y in range(height):
+                if grid[y][x] == 2:
+                    noise(grid, x, y)
     return grid
 
 
@@ -89,8 +90,6 @@ class Chunk(pygame.sprite.Sprite):
         for x in range(16):
             for y in range(16):
                 self.image.blit(matrix[y][x].image, (x * TILE_SIZE, y * TILE_SIZE))
-        pygame.draw.polygon(self.image, pygame.Color('black'),
-                            [(0, 0), (0, 16 * TILE_SIZE), (16 * TILE_SIZE, 16 * TILE_SIZE), (16 * TILE_SIZE, 0)], 2)
         self.rect = self.image.get_rect()
         self.rect.move_ip(pos)
 

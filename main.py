@@ -150,6 +150,8 @@ class Game:  # Main class
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
                 self.move(projectile, *projectile.signals[MOVE])
+            if projectile.signals[MOVETO]:
+                self.move_to(projectile, projectile.signals[MOVETO])
             projectile.reset_signals()
 
     def main(self):  # Main
@@ -250,10 +252,13 @@ class Game:  # Main class
             dy = 0
         else:
             dy = sin(angle)
+        if isinstance(sprite, Projectile) and sprite.mods & TRANSPARENT:
+            force_move = True
         self.move(sprite, dx, dy, velocity, force_move)
 
     def create_enemy(self, pos, **kwargs):  # Creates enemy at pos with given kwargs
-        Mage1((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
+        enemy_type = choice([Mage1, Mage2])
+        enemy_type((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
 
     def update_sprites(self):
         for sprite in self.sprite_groups[ALL]:
@@ -286,7 +291,7 @@ class Game:  # Main class
                 return
 
     def change_camera_target(self, pos):
-        for sprite in self.sprite_groups[ENTITIES]:
+        for sprite in set(self.sprite_groups[ENTITIES]) | set(self.sprite_groups[PROJECTILES]):
             if sprite.rect.collidepoint(pos):
                 self.camera.target = sprite
                 return
