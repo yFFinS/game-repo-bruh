@@ -23,7 +23,35 @@ def generate_terrain(width, height):
             for y in range(height):
                 if grid[y][x] == 2:
                     noise(grid, x, y)
+    connect_walls(grid)
     return grid
+
+
+def connect_walls(grid):
+    for y in range(len(grid) - 1):
+        for x in range(len(grid[0]) - 1):
+            square = [grid[i][j] for i in range(y, y + 2) for j in range(x, x + 2)]
+            q = 0
+            if square.count(2) == 2:
+                for i in square:
+                    if q == 2:
+                        break
+                    if i == 2:
+                        q += 1
+                    else:
+                        break
+                if q != 2:
+                    temp = []
+                    if grid[y][x] != 2:
+                        temp.append((x, y))
+                    if grid[y + 1][x] != 2:
+                        temp.append((x, y + 1))
+                    if grid[y][x + 1] != 2:
+                        temp.append((x + 1, y))
+                    if grid[y + 1][x + 1] != 2:
+                        temp.append((x + 1, y + 1))
+                    x1, y1 = random.choice(temp)
+                    grid[y1][x1] = 2
 
 
 def noise(grid, x, y, type=2):

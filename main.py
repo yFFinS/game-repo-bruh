@@ -7,7 +7,7 @@ width = info.current_w
 height = info.current_h
 screen = pygame.display.set_mode((width, height),
                                  pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
-FPS = 144
+FPS = 60
 
 ALL = 20
 ENTITIES = 21
@@ -26,6 +26,7 @@ from terrain import Terrain
 from menu import Menu
 from camera import *
 from projectiles import *
+from pathfinder import PathFinder
 
 
 class Game:  # Main class
@@ -48,6 +49,8 @@ class Game:  # Main class
         self.player = None
         self.camera = None
         self.menu = None
+        self.paths = None
+        self.pathfinder = None
         self.reset()
         self.main()
 
@@ -110,6 +113,9 @@ class Game:  # Main class
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
                              self.player, self.width // 2, self.height // 2)
 
+        self.pathfinder = PathFinder(self.terrain.grid)
+        self.paths = dict()
+        
     def open_menu(self):
         self.conditions[INMENU] = not self.conditions[INMENU]
         self.conditions[PAUSED] = True if self.conditions[INMENU] else False
@@ -191,18 +197,18 @@ class Game:  # Main class
                             x1 + dx * velocity / max(self.clock.get_fps(), 5)))
             y2 = max(0, min(self.terrain.get_height() - self.terrain.tile_size,
                             y1 + dy * velocity / max(self.clock.get_fps(), 5)))
-            sprite.rect.x = round(x2)
+            sprite.rect.centerx = round(x2)
             sprite.x = x2
             if self.terrain.collide_walls(sprite):
-                sprite.rect.x = round(x1)
+                sprite.rect.centerx = round(x1)
                 sprite.x = x1
                 x2 = x1
                 if isinstance(sprite, Projectile):
                     sprite.kill()
-            sprite.rect.y = round(y2)
+            sprite.rect.centery = round(y2)
             sprite.y = y2
             if self.terrain.collide_walls(sprite):
-                sprite.rect.y = round(y1)
+                sprite.rect.centery = round(y1)
                 sprite.y = y1
                 y2 = y1
                 if isinstance(sprite, Projectile):
@@ -223,9 +229,9 @@ class Game:  # Main class
                                 dx *= 1
                                 dy *= 1
                             spr.signals[MOVE] = (dx, dy)
-                sprite.rect.x = round(x1)
+                sprite.rect.centerx = round(x1)
                 sprite.x = x1
-                sprite.rect.y = round(y1)
+                sprite.rect.centery = round(y1)
                 sprite.y = y1
         else:
             x2 = x1 + dx * velocity / max(self.clock.get_fps(), 5)
@@ -233,22 +239,30 @@ class Game:  # Main class
         if isinstance(sprite, Projectile):
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
                 spr.hurt(sprite.damage)
-        sprite.rect.x, sprite.rect.y = round(x2), round(y2)
+        sprite.rect.centerx, sprite.rect.centery = round(x2), round(y2)
         sprite.x, sprite.y = x2, y2
 
     def move_to(self, sprite, pos, velocity=0, force_move=False):
         if velocity == 0:
             velocity = float(sprite.velocity)
-        angle = atan2(pos[1] - sprite.y, pos[0] - sprite.x)
+        if isinstance(sprite, Entity) and not force_move:
+            self.pathfinder.find(sprite, sprite.get_pos(), pos)
+            new_pos = self.pathfinder.next(sprite)
+            if self.paths.get(sprite, None) is None:
+                self.paths[sprite] = [[], (randint(0, 255), randint(0, 255), randint(0, 255))]
+            self.paths[sprite][0] = [sprite.get_pos()] + self.pathfinder.get_path(sprite)
+        else:
+            new_pos = pos
+        angle = atan2(new_pos[1] - sprite.y, new_pos[0] - sprite.x)
         if hasattr(sprite, 'look_angle'):
             sprite.look_angle = degrees(angle)
-        if abs(sprite.x - pos[0]) <= 0.01:
-            sprite.x = pos[0]
+        if abs(sprite.x - new_pos[0]) <= 0.01:
+            sprite.x = new_pos[0]
             dx = 0
         else:
             dx = cos(angle)
-        if abs(sprite.y - pos[1]) <= 0.01:
-            sprite.y = pos[1]
+        if abs(sprite.y - new_pos[1]) <= 0.01:
+            sprite.y = new_pos[1]
             dy = 0
         else:
             dy = sin(angle)
@@ -257,7 +271,7 @@ class Game:  # Main class
         self.move(sprite, dx, dy, velocity, force_move)
 
     def create_enemy(self, pos, **kwargs):  # Creates enemy at pos with given kwargs
-        enemy_type = choice([Mage1, Mage2])
+        enemy_type = choice(ENEMY_IDS)
         enemy_type((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
 
     def update_sprites(self):
@@ -279,7 +293,6 @@ class Game:  # Main class
 
         if self.conditions[INMENU]:
             self.menu.render(self.screen2)
-
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
 
@@ -302,14 +315,16 @@ class Game:  # Main class
         lines.append(font.render('FPS: ' + str(int(self.clock.get_fps())), True, pygame.Color('red')))
         lines.append(font.render('Rect: ' + str(self.player.rect), True, pygame.Color('red')))
         lines.append(font.render('HP: ' + str(self.player.hp), True, pygame.Color('red')))
-        '''lines.append(font.render('Entities: ' + str(len(self.sprite_groups[ENTITIES])), True, pygame.Color('red')))
-        for num, ent in enumerate(self.sprite_groups[ENTITIES]):
-            lines.append(font.render('Entity ' + str(num) + ' ' + str(ent.get_pos()), True, pygame.Color('red')))
-        for attr, value in self.player.get_attribute():
-            lines.append(font.render(str(attr).title() + ': ' + str(value)[:min(len(str(value)), 30)], True,
-                                     pygame.Color('red')))'''
         for num, line in enumerate(lines):
             self.screen.blit(line, (10, num * 30 + 10))
+
+        for sprite in self.paths.keys():
+            if not sprite.alive():
+                del self.paths[sprite]
+                break
+            path, color = self.paths[sprite]
+            coords = [self.camera.apply_pos((int(x[0]), int(x[1])), True) for x in path]
+            pygame.draw.lines(self.screen, color, False, coords, 3)
 
     def process_events(self):  # Process all events
         for event in pygame.event.get():

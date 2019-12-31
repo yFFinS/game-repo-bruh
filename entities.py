@@ -12,6 +12,7 @@ INVULNERABILITY = 1
 IMMOVABLE = 2
 FIGHTING = 3
 CANRANGEATTACK = 4
+CANPATHFIND = 5
 
 MOVE = 60
 MOVETO = 61
@@ -49,7 +50,9 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                        'invul_frames': Timer(20, target=self.change_condition,
                                              args=(INVULNERABILITY, False)),
                        'launch_time': Timer(150, target=self.change_condition,
-                                            args=(CANRANGEATTACK, True))}
+                                            args=(CANRANGEATTACK, True)),
+                       'pathfind': Timer(30, target=self.change_condition, args=(CANPATHFIND, True))}
+        self.conditions[CANPATHFIND] = True
 
         self.hp_bar = HpBar(groups[-1], self)
 
@@ -305,6 +308,11 @@ class Mage2(Mage1):
         self.timers['launch_time'].reset()
 
 
+class Warrior1(Enemy):
+    def __init__(self, groups, pos, player=None):
+        super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 100, 400, player=player)
+
+
 class HpBar(pygame.sprite.Sprite):
     def __init__(self, group, parent):
         super().__init__(group)
@@ -335,3 +343,6 @@ class HpBar(pygame.sprite.Sprite):
         x = (self.rect.w - line_rect.w) // 2
         y = (self.rect.h - line_rect.h) // 2
         self.image.blit(line, (x, y))
+
+
+ENEMY_IDS = {0: Mage1, 1: Mage2, 2: Warrior1}
