@@ -5,7 +5,7 @@ from entities import MOVE, MOVETO
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, groups, texture, size, velocity=50, live_time=1000, damage=0, team=0, mods={}):
         super().__init__(*groups)
-        self.image = pygame.transform.scale(texture, size)
+        self.image = pygame.transform.scale(texture, size) if texture else pygame.Surface(size)
         self.rect = self.image.get_rect()
         self.timers = {'live_time': Timer(live_time, target=self.kill)}
         self.velocity = velocity
@@ -63,6 +63,12 @@ class HomingProjectile(Projectile):
         self.signals[MOVETO] = self.target.get_pos()
 
 
+class SightChecker(Projectile):
+    def __init__(self, group, team=0, parent=None):
+        super().__init__(group, None, (0, 0), 1500, 200, 0, team)
+        self.parent = parent
+
+
 class Fireball(Projectile):
     def __init__(self, groups, team=0):
         super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 350, 25, team)
@@ -75,4 +81,4 @@ class Skull(HomingProjectile):
 
 
 PROJECTILE_TEXTURES = {0: load_image('fireball.png'), 1: load_image('skull.png')}
-PROJECTILE_IDS = {0: Fireball, 1: Skull}
+PROJECTILE_IDS = {-1: SightChecker, 0: Fireball, 1: Skull}

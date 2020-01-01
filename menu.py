@@ -6,8 +6,9 @@ class Menu:
         self.buttons = pygame.sprite.Group()
         self.background_group = pygame.sprite.GroupSingle()
         self.bg = pygame.sprite.Sprite()
-        self.bg.image = pygame.Surface((1000, 1000), pygame.SRCALPHA, 32)
+        self.bg.image = pygame.Surface((1000, 1000), 32)
         self.bg.rect = pygame.rect.Rect([0, 0, 1000, 1000])
+        self.bg.image.set_alpha(64)
         pygame.draw.rect(self.bg.image, (0, 0, 0, 64), self.bg.rect)
         self.background_group.add(self.bg)
 

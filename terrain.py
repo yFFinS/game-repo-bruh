@@ -125,4 +125,5 @@ class Chunk(pygame.sprite.Sprite):
         return self.rect.x, self.rect.y
 
 
+
 TILES = {0: Tile('grass.jpg', True), 1: Tile('dirt.jpg', True), 2: Tile('sand.jpg', True), 3: Tile('wall.png', False)}

@@ -22,6 +22,28 @@ def distance_between(pos1, pos2):
     return sqrt((pos1[0] - pos2[0]) * (pos1[0] - pos2[0]) + (pos1[1] - pos2[1]) * (pos1[1] - pos2[1]))
 
 
+class ColorMask(pygame.sprite.GroupSingle):
+    def __init__(self, screen, *args):
+        super().__init__(*args)
+        self.screen = screen
+        self.mask = pygame.sprite.Sprite()
+        self.mask.image = pygame.Surface((screen.get_width(), screen.get_height()))
+        self.mask.rect = self.mask.image.get_rect()
+        self.mask.image.set_alpha(200)
+        self.set_color((0, 0, 0))
+        self.add(self.mask)
+
+    def set_alpha(self, alpha):
+        self.mask.image.set_alpha(alpha)
+
+    def set_color(self, color):
+        self.mask.image.fill(color)
+
+    def update(self):
+        self.mask.image = pygame.transform.scale(self.mask.image, (self.screen.get_width(), self.screen.get_height()))
+        self.mask.rect = self.mask.image.get_rect()
+
+
 class Timer:  # Timer class
     def __init__(self, time, target=None, args=tuple(), mode=0):
         self.default_time = time

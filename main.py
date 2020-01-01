@@ -13,6 +13,7 @@ ALL = 20
 ENTITIES = 21
 CHUNKS = 22
 PROJECTILES = 23
+PLAYER = 24
 
 RUNNING = 40
 PAUSED = 41
@@ -51,6 +52,7 @@ class Game:  # Main class
         self.menu = None
         self.paths = None
         self.pathfinder = None
+        self.color_mask = None
         self.reset()
         self.main()
 
@@ -88,6 +90,10 @@ class Game:  # Main class
                 self.player.look_angle = 180
             self.move(self.player, *move_d)
 
+    def update_colors(self):
+        return 
+        self.color_mask.draw(self.screen2)
+
     def reset(self):
         self.menu = Menu()
         self.menu.add_button('Продолжить', (self.width // 2 - 150, 200), target=self.open_menu)
@@ -108,6 +114,9 @@ class Game:  # Main class
         for chunk in self.sprite_groups[CHUNKS]:
             self.sprite_groups[ALL].add(chunk)
         self.screen2 = pygame.Surface((self.width, self.height), pygame.HWSURFACE, 32)
+
+        self.color_mask = ColorMask(self.screen2)
+        self.color_mask.set_alpha(0)
         self.player = Player((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]),
                              (self.terrain.get_width() // 2, self.terrain.get_height() // 2))
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
@@ -115,6 +124,7 @@ class Game:  # Main class
 
         self.pathfinder = PathFinder(self.terrain.grid)
         self.paths = dict()
+        self.sprite_groups[PLAYER].add(self.player)
         
     def open_menu(self):
         self.conditions[INMENU] = not self.conditions[INMENU]
@@ -149,9 +159,13 @@ class Game:  # Main class
             if entity.signals[MOVETO]:
                 self.move_to(entity, entity.signals[MOVETO])
             if entity.signals[LAUNCH]:
-                PROJECTILE_IDS[entity.signals[LAUNCH][0]]((self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
-                                                          team=entity.team) \
-                    .launch(entity.get_pos(), entity.signals[LAUNCH][1])
+                p = PROJECTILE_IDS[entity.signals[LAUNCH][0]](
+                    (self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
+                    team=entity.team)
+
+                p.launch(entity.get_pos(), entity.signals[LAUNCH][1])
+                if isinstance(p, SightChecker):
+                    p.parent = entity
             entity.reset_signals()
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
@@ -176,6 +190,7 @@ class Game:  # Main class
                 self.handle_signals()
             self.render_sprites()
             # Screen update
+            self.update_colors()
             self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
                 self.debug()
@@ -213,6 +228,9 @@ class Game:  # Main class
                 y2 = y1
                 if isinstance(sprite, Projectile):
                     sprite.kill()
+            if isinstance(sprite, SightChecker)\
+                    and pygame.sprite.spritecollide(sprite, self.sprite_groups[PLAYER], False):
+                sprite.parent.change_condition(FIGHTING, True)
             if isinstance(sprite, Entity):
                 collided = pygame.sprite.spritecollide(sprite, self.sprite_groups[ENTITIES], False)
                 if len(collided) > 1:

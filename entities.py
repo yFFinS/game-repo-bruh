@@ -196,6 +196,12 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         dy = -sin(angle_between(self.get_pos(), pos))
         self.signals[MOVE] = (dx, dy)
 
+    def get_max_hp(self):
+        return self.hp_bar.max_hp
+
+    def get_hp(self):
+        return self.hp_bar.hp
+
 
 class Player(Entity):  # Player class
     def __init__(self, groups, pos):
@@ -223,16 +229,15 @@ class Enemy(Entity):  # Enemy class
         super().__init__(groups, pos, texture, size, velocity, hp)
         self.player = player
         self.fov = 60
-        self.view_range = 150
+        self.view_range = 600
         self.target = self.player
-        self.attacking = False
         self.timers['player_near'] = Timer(100, target=self.change_condition, args=(FIGHTING, True))
         self.timers['wait'].start()
 
     def check_for_player(self):  # Checks for player in self line-of-sight
         if self.conditions[FIGHTING]:
             return
-        if distance_between(self.player.get_pos(), self.get_pos()) <= 300:
+        if distance_between(self.player.get_pos(), self.get_pos()) <= 200:
             if not self.timers['player_near'].is_started():
                 self.timers['player_near'].start()
         else:
@@ -246,7 +251,7 @@ class Enemy(Entity):  # Enemy class
             ang_dist = dist_orient - (self.look_angle - 90) % 360
             ang_dist = ang_dist - 360 * floor((ang_dist + 180) * (1 / 360))
             if abs(ang_dist) <= self.fov:
-                self.change_condition(FIGHTING, True)
+                self.launch_projectile(-1, self.target.get_pos())
 
     def move_forward(self):  # Moves self toward looking direction
         dx = cos(radians(self.look_angle))
