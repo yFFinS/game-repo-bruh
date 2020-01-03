@@ -1,26 +1,10 @@
-
 from math import pi, floor
-from random import randint, choice
-
+from random import randint
 from functions import *
+from constants import *
 
 PLAYER_TEXTURES = 'player.png'
 ENEMY_TEXTURES = {1: 'enemy1.png'}
-
-WAITING = 0
-INVULNERABILITY = 1
-IMMOVABLE = 2
-FIGHTING = 3
-CANRANGEATTACK = 4
-CANPATHFIND = 5
-
-MOVE = 60
-MOVETO = 61
-LAUNCH = 62
-
-SIDE = 70
-UP = 71
-DOWN = 72
 
 
 class Entity(pygame.sprite.Sprite):  # Used to create and control entities
@@ -43,16 +27,19 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.target = None
         self.team = 0
         self.projectile = 0
-        self.timers = {'sleep_timer': Timer(100),
-                       'wait': Timer(200, target=self.wait, mode=1),
-                       'attack_time': Timer(30),
-                       'base_attack_time': Timer(10, target=self.start_attack_animation),
-                       'invul_frames': Timer(20, target=self.change_condition,
+        self.passive_regen = 1
+        self.timers = {'sleep_timer': Timer(2),
+                       'wait': Timer(3, target=self.wait, mode=1),
+                       'attack_time': Timer(0.5),
+                       'base_attack_time': Timer(0.1, target=self.start_attack_animation),
+                       'invul_frames': Timer(0.3, target=self.change_condition,
                                              args=(INVULNERABILITY, False)),
-                       'launch_time': Timer(150, target=self.change_condition,
+                       'launch_time': Timer(2, target=self.change_condition,
                                             args=(CANRANGEATTACK, True)),
-                       'pathfind': Timer(30, target=self.change_condition, args=(CANPATHFIND, True))}
+                       'pathfind': Timer(0.1, target=self.change_condition, args=(CANPATHFIND, True)),
+                       'hp_regen': Timer(1, target=self.hp_regen, args=(self.passive_regen,), mode=1)}
         self.conditions[CANPATHFIND] = True
+        self.timers['hp_regen'].start()
 
         self.hp_bar = HpBar(groups[-1], self)
 
@@ -60,45 +47,14 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.timers['attack_time'].reset()
         self.timers['attack_time'].start()
 
-    def attack(self, target=None):
-        # TODO
-        pass
-        '''if target is None:
-            target = self.target
-        cur_frame, frames = self.timers['attack_time'].default_time - self.timers['attack_time'].time, self.timers[
-            'attack_time'].default_time
-        offset, rect = self.weapon.get_current_sprite(cur_frame, frames)
-        if 90 <= self.look_angle <= 180:
-            self.screen.blit(self.weapon.texture, (self.x - self.rect.width // 2, self.y + offset), rect)
-            attack_box = pygame.rect.Rect([self.x - self.rect.width // 2, self.y + offset, *self.weapon.size])
-        elif 180 <= self.look_angle <= 270:
-            self.screen.blit(self.weapon.texture,
-                             (self.x - self.rect.width // 2 + offset, self.y + self.rect.height // 2), rect)
-            attack_box = pygame.rect.Rect([self.x - self.rect.width // 2, self.y + offset, *self.weapon.size])
-        if 90 <= self.look_angle <= 180:
-            self.screen.blit(self.weapon.texture, (self.x - self.rect.width // 2, self.y + offset), rect)
-            attack_box = pygame.rect.Rect([self.x - self.rect.width // 2, self.y + offset, *self.weapon.size])
-        if 90 <= self.look_angle <= 180:
-            self.screen.blit(self.weapon.texture, (self.x - self.rect.width // 2, self.y + offset), rect)
-            attack_box = pygame.rect.Rect([self.x - self.rect.width // 2, self.y + offset, *self.weapon.size])
-        if cur_frame / frames == 0.4:
-            if target is None:
-                return
-            if type(target) != list and type(target) != tuple:
-                if attack_box.colliderect(target.hitbox) and not target.invul:
-                    target.hurt(self.weapon.damage)
-            else:
-                for t in target:
-                    if attack_box.colliderect(t.hitbox) and not t.invul:
-                        t.hurt(self.weapon.damage)'''
+    def hp_regen(self, hp):
+        self.hp = min(self.hp + hp, self.get_max_hp())
 
-    def try_to_attack(self):
-        if self.weapon is None:
-            return
-        if self.weapon.attack_range >= distance_between(self.target.get_pos(), self.get_pos()):
-            if not self.timers['base_attack_time'].is_started():
-                self.timers['base_attack_time'].args = (self.target,)
-                self.timers['base_attack_time'].start(10000 // (self.attack_speed + self.weapon.attack_speed) // 10)
+    def attack(self, target=None):
+        pass
+
+    def push(self, dx, dy, strength):
+        self.signals[PUSH] = (dx, dy, strength)
 
     def try_range_attack(self):
         if not self.conditions[CANRANGEATTACK]:
@@ -127,7 +83,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         return self.timers['sleep_timer'].is_started()
 
     def hurt(self, damage):  # Gets damaged
-        if self.conditions[INVULNERABILITY]:
+        if self.conditions[INVULNERABILITY] or damage <= 0:
             return
         self.hp = max(0, self.hp - damage)
         if self.hp == 0:
@@ -140,7 +96,6 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.signals[LAUNCH] = (projectile_id, target)
 
     def update(self):  # Updates self
-        self.hp_bar.update()
         if -90 <= self.look_angle <= 90:
             self.image = reverse_image(self.default_image)
         else:
@@ -149,6 +104,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         for timer in self.timers.values():
             if timer.is_started():
                 timer.tick()
+        self.hp_bar.update()
 
         if self.timers['attack_time'].is_started():
             self.attack()
@@ -168,7 +124,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
 
     def wait(self):
         self.conditions[WAITING] = not self.conditions[WAITING]
-        self.timers['wait'].default_time = randint(50, 250)
+        self.timers['wait'].set_default_time(randint(10, 80) / 20)
         self.timers['wait'].reset()
         if not self.conditions[WAITING]:
             self.random_rotation()
@@ -207,8 +163,10 @@ class Player(Entity):  # Player class
     def __init__(self, groups, pos):
         super().__init__(groups, pos, PLAYER_TEXTURES, (50, 50), 300, 300)
         self.enemies = None
-        self.team = 1
+        self.team = -1
         self.conditions[CANRANGEATTACK] = True
+        self.timers['launch_time'].set_default_time(1)
+        self.timers['launch_time'].reset()
 
     def start_attacking(self):
         if not self.timers['attack_time'].is_started():
@@ -225,19 +183,20 @@ class Player(Entity):  # Player class
 
 
 class Enemy(Entity):  # Enemy class
-    def __init__(self, groups, pos, texture, size, velocity=30, hp=100, player=None):
-        super().__init__(groups, pos, texture, size, velocity, hp)
+    def __init__(self, *args, player=None, damage=50, **kwargs):
+        super().__init__(*args, **kwargs)
         self.player = player
         self.fov = 60
         self.view_range = 600
         self.target = self.player
-        self.timers['player_near'] = Timer(100, target=self.change_condition, args=(FIGHTING, True))
+        self.timers['player_near'] = Timer(3, target=self.change_condition, args=(FIGHTING, True))
         self.timers['wait'].start()
+        self.damage = damage
 
     def check_for_player(self):  # Checks for player in self line-of-sight
         if self.conditions[FIGHTING]:
             return
-        if distance_between(self.player.get_pos(), self.get_pos()) <= 200:
+        if distance_between(self.player.get_pos(), self.get_pos()) <= 50:
             if not self.timers['player_near'].is_started():
                 self.timers['player_near'].start()
         else:
@@ -274,7 +233,6 @@ class Enemy(Entity):  # Enemy class
             attacked = self.try_range_attack()
             if not attacked:
                 self.move_to_target()
-                self.try_to_attack()
         else:
             if not self.conditions[WAITING]:
                 self.move_forward()
@@ -309,7 +267,7 @@ class Mage2(Mage1):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.projectile = 1
-        self.timers['launch_time'].default_time = 2000
+        self.timers['launch_time'].set_default_time(15)
         self.timers['launch_time'].reset()
 
 

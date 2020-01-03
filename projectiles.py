@@ -1,9 +1,9 @@
 from functions import *
-from entities import MOVE, MOVETO
+from constants import *
 
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, groups, texture, size, velocity=50, live_time=1000, damage=0, team=0, mods={}):
+    def __init__(self, groups, texture, size, velocity=50, live_time=5, damage=0, team=0, power=200, *args):
         super().__init__(*groups)
         self.image = pygame.transform.scale(texture, size) if texture else pygame.Surface(size)
         self.rect = self.image.get_rect()
@@ -14,7 +14,8 @@ class Projectile(pygame.sprite.Sprite):
         self.dx, self.dy = 0, 0
         self.x, self.y = 0, 0
         self.team = team
-        self.mods = mods
+        self.mods = set(args)
+        self.power = power
 
     def launch(self, pos1, p2):
         if type(p2) is not tuple:
@@ -65,18 +66,18 @@ class HomingProjectile(Projectile):
 
 class SightChecker(Projectile):
     def __init__(self, group, team=0, parent=None):
-        super().__init__(group, None, (0, 0), 1500, 200, 0, team)
+        super().__init__(group, PROJECTILE_TEXTURES[0], (5, 5), 4000, 1, 0, team)
         self.parent = parent
 
 
 class Fireball(Projectile):
     def __init__(self, groups, team=0):
-        super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 350, 25, team)
+        super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 3, 25, team)
 
 
 class Skull(HomingProjectile):
     def __init__(self, groups, team=0):
-        super().__init__(groups, PROJECTILE_TEXTURES[1], (60, 60), 50, 1500, 200, team)
+        super().__init__(groups, PROJECTILE_TEXTURES[1], (60, 60), 50, 10, 200, team)
         self.mods = TRANSPARENT
 
 

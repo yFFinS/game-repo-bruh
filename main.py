@@ -7,21 +7,8 @@ width = info.current_w
 height = info.current_h
 screen = pygame.display.set_mode((width, height),
                                  pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
-FPS = 60
 
-ALL = 20
-ENTITIES = 21
-CHUNKS = 22
-PROJECTILES = 23
-PLAYER = 24
-
-RUNNING = 40
-PAUSED = 41
-DEBUGGING = 42
-FULLSCREEN = 43
-INMENU = 44
-
-
+from constants import *
 from entities import *
 from terrain import Terrain
 from menu import Menu
@@ -122,7 +109,7 @@ class Game:  # Main class
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
                              self.player, self.width // 2, self.height // 2)
 
-        self.pathfinder = PathFinder(self.terrain.grid)
+        self.pathfinder = PathFinder(self.terrain.obst_grid)
         self.paths = dict()
         self.sprite_groups[PLAYER].add(self.player)
         
@@ -156,8 +143,10 @@ class Game:  # Main class
         for entity in self.sprite_groups[ENTITIES]:
             if entity.signals[MOVE]:
                 self.move(entity, *entity.signals[MOVE])
+                entity.signals[MOVE] = None
             if entity.signals[MOVETO]:
                 self.move_to(entity, entity.signals[MOVETO])
+                entity.signals[MOVETO] = None
             if entity.signals[LAUNCH]:
                 p = PROJECTILE_IDS[entity.signals[LAUNCH][0]](
                     (self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
@@ -166,7 +155,13 @@ class Game:  # Main class
                 p.launch(entity.get_pos(), entity.signals[LAUNCH][1])
                 if isinstance(p, SightChecker):
                     p.parent = entity
-            entity.reset_signals()
+                entity.signals[LAUNCH] = None
+            if entity.signals[PUSH]:
+                if entity.signals[PUSH][2] == 0:
+                    entity.signals[PUSH] = None
+                else:
+                    self.move(entity, *entity.signals[PUSH])
+                    entity.signals[PUSH] = *entity.signals[PUSH][:2], int(entity.signals[PUSH][2] * 0.95)
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
                 self.move(projectile, *projectile.signals[MOVE])
@@ -195,7 +190,6 @@ class Game:  # Main class
             if self.conditions[DEBUGGING]:
                 self.debug()
             pygame.display.flip()
-
             # Delay
             self.clock.tick(FPS)
 
@@ -205,8 +199,10 @@ class Game:  # Main class
         x1, y1 = sprite.get_pos()
         if velocity == 0:
             velocity = float(sprite.velocity)
-        if type(sprite) is Player and (dx * dy == 1 or dx * dy == -1):
-            velocity /= sqrt(2)
+            if sprite.signals[PUSH]:
+                velocity /= 3
+            if type(sprite) is Player and (dx * dy == 1 or dx * dy == -1):
+                velocity /= sqrt(2)
         if not force_move:
             x2 = max(0, min(self.terrain.get_width() - self.terrain.tile_size,
                             x1 + dx * velocity / max(self.clock.get_fps(), 5)))
@@ -214,7 +210,7 @@ class Game:  # Main class
                             y1 + dy * velocity / max(self.clock.get_fps(), 5)))
             sprite.rect.centerx = round(x2)
             sprite.x = x2
-            if self.terrain.collide_walls(sprite):
+            if self.terrain.collide(sprite):
                 sprite.rect.centerx = round(x1)
                 sprite.x = x1
                 x2 = x1
@@ -222,7 +218,7 @@ class Game:  # Main class
                     sprite.kill()
             sprite.rect.centery = round(y2)
             sprite.y = y2
-            if self.terrain.collide_walls(sprite):
+            if self.terrain.collide(sprite):
                 sprite.rect.centery = round(y1)
                 sprite.y = y1
                 y2 = y1
@@ -237,16 +233,13 @@ class Game:  # Main class
                     for spr in collided:
                         if spr != sprite:
                             angle = angle_between(sprite.get_pos(), spr.get_pos())
-                            q = 100 / max(distance_between(sprite.get_pos(), spr.get_pos()), 5)
-                            dx = cos(angle) * q
-                            dy = sin(angle) * q
-                            if type(spr) is Player:
-                                dx /= 3
-                                dy /= 3
-                            if type(sprite) is Player:
-                                dx *= 1
-                                dy *= 1
-                            spr.signals[MOVE] = (dx, dy)
+                            dx = cos(angle)
+                            dy = sin(angle)
+                            if isinstance(sprite, Enemy) and sprite.target == spr:
+                                spr.push(dx, dy, 500)
+                                spr.hurt(sprite.damage)
+                            else:
+                                spr.signals[MOVE] = (dx, dy)
                 sprite.rect.centerx = round(x1)
                 sprite.x = x1
                 sprite.rect.centery = round(y1)
@@ -254,9 +247,11 @@ class Game:  # Main class
         else:
             x2 = x1 + dx * velocity / max(self.clock.get_fps(), 5)
             y2 = y1 + dy * velocity / max(self.clock.get_fps(), 5)
-        if isinstance(sprite, Projectile):
+        if isinstance(sprite, Projectile) and type(sprite) is not SightChecker:
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
                 spr.hurt(sprite.damage)
+                angle = angle_between(sprite.get_pos(), spr.get_pos())
+                spr.push(cos(angle), sin(angle), sprite.power)
         sprite.rect.centerx, sprite.rect.centery = round(x2), round(y2)
         sprite.x, sprite.y = x2, y2
 

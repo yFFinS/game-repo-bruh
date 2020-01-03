@@ -1,8 +1,8 @@
 import pygame
 import os
 from math import sqrt, atan2, sin, cos, degrees, radians
-
-TRANSPARENT = {0}
+from random import choice
+from constants import FPS
 
 
 def load_image(name):
@@ -46,8 +46,8 @@ class ColorMask(pygame.sprite.GroupSingle):
 
 class Timer:  # Timer class
     def __init__(self, time, target=None, args=tuple(), mode=0):
-        self.default_time = time
-        self.time = time
+        self.default_time = round(FPS * time)
+        self.time = self.default_time
         self.started = False
         self.mode = mode
         self.target = target
@@ -55,6 +55,9 @@ class Timer:  # Timer class
 
     def get_time(self):
         return self.time
+
+    def set_default_time(self, time):
+        self.default_time = round(FPS * time)
 
     def tick(self, time=1):
         if self.time > 0:

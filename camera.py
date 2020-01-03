@@ -1,6 +1,3 @@
-import pygame
-
-
 class Camera:
     def __init__(self, width, height, target, centerx, centery):
         self.target = target

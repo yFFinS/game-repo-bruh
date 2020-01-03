@@ -1,10 +1,9 @@
-from terrain import TILE_SIZE
-from entities import CANPATHFIND
+from constants import *
 
 
 class PathFinder:
     def __init__(self, grid):
-        self.grid = [[0 if grid[y][x].transparent else 1 for x in range(len(grid[0]))] for y in range(len(grid))]
+        self.grid = [[0 if grid[y][x] is None or BREAKABLE in grid[y][x].mods else 1 for x in range(len(grid[0]))] for y in range(len(grid))]
         self.grids = dict()
         self.closedsets = dict()
         self.opensets = dict()

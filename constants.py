@@ -1,0 +1,36 @@
+# modifiers
+TRANSPARENT = 0
+BREAKABLE = 1
+
+# sprite groups
+ALL = 20
+ENTITIES = 21
+CHUNKS = 22
+PROJECTILES = 23
+PLAYER = 24
+
+# game conditions
+RUNNING = 40
+PAUSED = 41
+DEBUGGING = 42
+FULLSCREEN = 43
+INMENU = 44
+
+# entity conditions
+WAITING = 0
+INVULNERABILITY = 1
+IMMOVABLE = 2
+FIGHTING = 3
+CANRANGEATTACK = 4
+CANPATHFIND = 5
+
+# entity signals
+MOVE = 60
+MOVETO = 61
+LAUNCH = 62
+PUSH = 63
+
+
+# other
+TILE_SIZE = 72
+FPS = 60
