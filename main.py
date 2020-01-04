@@ -8,7 +8,6 @@ height = info.current_h
 screen = pygame.display.set_mode((width, height),
                                  pygame.FULLSCREEN | pygame.HWSURFACE | pygame.RESIZABLE, 32)
 
-from constants import *
 from entities import *
 from terrain import Terrain
 from menu import Menu
@@ -59,6 +58,9 @@ class Game:  # Main class
         if pygame.K_F11 in self.keys_pressed:
             self.fullscreen()
             self.keys_pressed.remove(pygame.K_F11)
+        if pygame.K_q in self.keys_pressed:
+            self.terrain.signals[MESSAGE] = ('Bruh',)
+            self.keys_pressed.remove(pygame.K_q)
 
         if not self.conditions[PAUSED]:
             # Move calculation
@@ -77,16 +79,11 @@ class Game:  # Main class
                 self.player.look_angle = 180
             self.move(self.player, *move_d)
 
-    def update_colors(self):
-        return 
-        self.color_mask.draw(self.screen2)
-
     def reset(self):
         self.menu = Menu()
-        self.menu.add_button('Продолжить', (self.width // 2 - 150, 200), target=self.open_menu)
-        self.menu.add_button('Настройки')
-        self.menu.add_button('Чето')
-        self.menu.add_button('Выйти из игры', target=self.terminate)
+        self.menu.add_button('Continue', (self.width // 2 - 150, 200), target=self.open_menu)
+        self.menu.add_button('Settings')
+        self.menu.add_button('Quit game', target=self.terminate)
 
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
 
@@ -96,16 +93,13 @@ class Game:  # Main class
 
         self.keys_pressed = []
 
-        self.terrain = Terrain(64, 64)
+        self.terrain = Terrain(16 * 3 * 2, 16 * 3 * 2)
         self.sprite_groups[CHUNKS] = pygame.sprite.Group(self.terrain.chunks)
         for chunk in self.sprite_groups[CHUNKS]:
             self.sprite_groups[ALL].add(chunk)
         self.screen2 = pygame.Surface((self.width, self.height), pygame.HWSURFACE, 32)
-
-        self.color_mask = ColorMask(self.screen2)
-        self.color_mask.set_alpha(0)
         self.player = Player((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]),
-                             (self.terrain.get_width() // 2, self.terrain.get_height() // 2))
+                             (500, 500))
         self.camera = Camera(self.terrain.get_width(), self.terrain.get_height(),
                              self.player, self.width // 2, self.height // 2)
 
@@ -144,9 +138,11 @@ class Game:  # Main class
             if entity.signals[MOVE]:
                 self.move(entity, *entity.signals[MOVE])
                 entity.signals[MOVE] = None
+
             if entity.signals[MOVETO]:
                 self.move_to(entity, entity.signals[MOVETO])
                 entity.signals[MOVETO] = None
+
             if entity.signals[LAUNCH]:
                 p = PROJECTILE_IDS[entity.signals[LAUNCH][0]](
                     (self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
@@ -156,18 +152,28 @@ class Game:  # Main class
                 if isinstance(p, SightChecker):
                     p.parent = entity
                 entity.signals[LAUNCH] = None
+
             if entity.signals[PUSH]:
                 if entity.signals[PUSH][2] == 0:
                     entity.signals[PUSH] = None
                 else:
                     self.move(entity, *entity.signals[PUSH])
                     entity.signals[PUSH] = *entity.signals[PUSH][:2], int(entity.signals[PUSH][2] * 0.95)
+
+            if entity.signals[DEAD]:
+                entity.kill()
+
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
                 self.move(projectile, *projectile.signals[MOVE])
             if projectile.signals[MOVETO]:
                 self.move_to(projectile, projectile.signals[MOVETO])
             projectile.reset_signals()
+
+        if self.terrain.signals[MESSAGE]:
+            msg = Message((self.sprite_groups[MESSAGES],), (0, 100), *self.terrain.signals[MESSAGE])
+            msg.rect.x = (self.width - msg.rect.x) // 2
+            self.terrain.signals[MESSAGE] = None
 
     def main(self):  # Main
 
@@ -183,9 +189,10 @@ class Game:  # Main class
                 self.update_sprites()
 
                 self.handle_signals()
+                self.terrain.update([self.sprite_groups[ENTITIES], self.sprite_groups[ALL]], self.player)
             self.render_sprites()
+            self.handle_messages()
             # Screen update
-            self.update_colors()
             self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
                 self.debug()
@@ -200,14 +207,14 @@ class Game:  # Main class
         if velocity == 0:
             velocity = float(sprite.velocity)
             if sprite.signals[PUSH]:
-                velocity /= 3
+                velocity /= 2
             if type(sprite) is Player and (dx * dy == 1 or dx * dy == -1):
                 velocity /= sqrt(2)
         if not force_move:
-            x2 = max(0, min(self.terrain.get_width() - self.terrain.tile_size,
-                            x1 + dx * velocity / max(self.clock.get_fps(), 5)))
-            y2 = max(0, min(self.terrain.get_height() - self.terrain.tile_size,
-                            y1 + dy * velocity / max(self.clock.get_fps(), 5)))
+            x2 = max(sprite.rect.w // 2, min(self.terrain.get_width() - sprite.rect.w // 2,
+                                                 x1 + dx * velocity / FPS))
+            y2 = max(sprite.rect.h // 2, min(self.terrain.get_height() - sprite.rect.h // 2,
+                                                 y1 + dy * velocity / FPS))
             sprite.rect.centerx = round(x2)
             sprite.x = x2
             if self.terrain.collide(sprite):
@@ -238,6 +245,7 @@ class Game:  # Main class
                             if isinstance(sprite, Enemy) and sprite.target == spr:
                                 spr.push(dx, dy, 500)
                                 spr.hurt(sprite.damage)
+                                sprite.change_condition(FIGHTING, True)
                             else:
                                 spr.signals[MOVE] = (dx, dy)
                 sprite.rect.centerx = round(x1)
@@ -315,6 +323,10 @@ class Game:  # Main class
             if entity.collision((x, y)):
                 entity.kill()
                 return
+
+    def handle_messages(self):
+        self.sprite_groups[MESSAGES].draw(self.screen2)
+        self.sprite_groups[MESSAGES].update()
 
     def change_camera_target(self, pos):
         for sprite in set(self.sprite_groups[ENTITIES]) | set(self.sprite_groups[PROJECTILES]):

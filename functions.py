@@ -86,3 +86,33 @@ class Timer:  # Timer class
 
     def is_started(self):
         return self.started
+
+
+class Message(pygame.sprite.Sprite):
+    def __init__(self, groups, pos, text='', live_time=5, color=(255, 255, 255), text_size=50, parent=None):
+        super().__init__(*groups)
+        self.font = pygame.font.Font(None, text_size)
+        line = self.font.render(text, True, color)
+        self.rect = line.get_rect()
+        self.rect.topleft = pos
+        self.rect.y = pos[1] + 100
+        self.end_y = pos[1]
+        self.image = pygame.Surface((self.rect.w, self.rect.h))
+        self.image.set_alpha(0)
+        self.image.set_colorkey((0, 0, 0))
+        self.image.blit(line, (0, 0))
+        self.timers = {'live_time': Timer(live_time, target=self.kill)}
+        self.parent = parent
+        if parent is not None:
+            self.rect.bottomleft = parent.rect.topleft
+            self.rect.y -= 20
+
+    def update(self):
+        for timer in self.timers.values():
+            timer.tick()
+        if self.parent is not None:
+            self.rect.bottomleft = self.parent.rect.topleft
+            self.rect.y -= 20
+        elif self.rect.y > self.end_y:
+            self.rect.y -= 3
+        self.image.set_alpha(min(255, self.image.get_alpha() + 10))

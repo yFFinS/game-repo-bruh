@@ -36,7 +36,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                                              args=(INVULNERABILITY, False)),
                        'launch_time': Timer(2, target=self.change_condition,
                                             args=(CANRANGEATTACK, True)),
-                       'pathfind': Timer(0.1, target=self.change_condition, args=(CANPATHFIND, True)),
+                       'pathfind': Timer(0.3, target=self.change_condition, args=(CANPATHFIND, True)),
                        'hp_regen': Timer(1, target=self.hp_regen, args=(self.passive_regen,), mode=1)}
         self.conditions[CANPATHFIND] = True
         self.timers['hp_regen'].start()
@@ -87,8 +87,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
             return
         self.hp = max(0, self.hp - damage)
         if self.hp == 0:
-            self.kill()
-            return
+            self.signals[DEAD] = True
         self.conditions[INVULNERABILITY] = True
         self.timers['invul_frames'].start()
     
@@ -105,7 +104,6 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
             if timer.is_started():
                 timer.tick()
         self.hp_bar.update()
-
         if self.timers['attack_time'].is_started():
             self.attack()
 

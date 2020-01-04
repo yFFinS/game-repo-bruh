@@ -8,6 +8,7 @@ ENTITIES = 21
 CHUNKS = 22
 PROJECTILES = 23
 PLAYER = 24
+MESSAGES = 25
 
 # game conditions
 RUNNING = 40
@@ -24,13 +25,15 @@ FIGHTING = 3
 CANRANGEATTACK = 4
 CANPATHFIND = 5
 
-# entity signals
+# signals
 MOVE = 60
 MOVETO = 61
 LAUNCH = 62
 PUSH = 63
-
+MESSAGE = 64
+DEAD = 65
+END = 66
 
 # other
 TILE_SIZE = 72
-FPS = 60
+FPS = 50

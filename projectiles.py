@@ -66,13 +66,13 @@ class HomingProjectile(Projectile):
 
 class SightChecker(Projectile):
     def __init__(self, group, team=0, parent=None):
-        super().__init__(group, PROJECTILE_TEXTURES[0], (5, 5), 4000, 1, 0, team)
+        super().__init__(group, PROJECTILE_TEXTURES[0], (0, 0), 3000, 0.2, 0, team)
         self.parent = parent
 
 
 class Fireball(Projectile):
     def __init__(self, groups, team=0):
-        super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 3, 25, team)
+        super().__init__(groups, PROJECTILE_TEXTURES[0], (50, 50), 350, 3, 1000, team)
 
 
 class Skull(HomingProjectile):
