@@ -94,7 +94,7 @@ class Terrain:
             for x in range(self.width):
                 tile = self.obst_grid[y][x]
                 if tile is not None and not isinstance(tile, Gate) and BREAKABLE not in tile.mods:
-                    temp_temp.append(tile.rect)
+                    temp_temp.append(tile)
                 else:
                     temp.append(temp_temp)
                     temp_temp = []
@@ -104,22 +104,26 @@ class Terrain:
             for y in range(self.height):
                 tile = self.obst_grid[y][x]
                 if tile is not None and not isinstance(tile, Gate) and BREAKABLE not in tile.mods:
-                    temp_temp.append(tile.rect)
+                    temp_temp.append(tile)
                 else:
                     temp.append(temp_temp)
                     temp_temp = []
             temp.append(temp_temp)
+        for cur in temp:
+            rects = []
+            if len(cur) > 1:
+                for tile in cur:
+                    tile.united = True
+                    rects.append(tile.rect)
+                wall = pygame.sprite.Sprite()
+                wall.rect = pygame.rect.Rect(*rects[0].topleft, 0, 0).unionall(rects)
+                self.walls.add(wall)
         for y in range(self.height):
             for x in range(self.width):
                 tile = self.obst_grid[y][x]
-                if tile is not None and (isinstance(tile, Gate) or BREAKABLE in tile.mods):
+                if tile is not None and BREAKABLE not in tile.mods and (isinstance(tile, Gate) or not tile.united):
                     tile.topleft = (x * TILE_SIZE, y * TILE_SIZE)
                     self.walls.add(tile)
-        for cur in temp:
-            if cur:
-                wall = pygame.sprite.Sprite()
-                wall.rect = pygame.rect.Rect(*cur[0].topleft, 0, 0).unionall(cur)
-                self.walls.add(wall)
 
     def get_height(self):
         return self.height * TILE_SIZE
@@ -178,7 +182,7 @@ class Terrain:
                         if left == 0:
                             self.open_gates()
                             self.chambers[y][x].completed = True
-                            self.signals[MESSAGE] = ('Chamber completed', )
+                            self.signals[MESSAGE] = ('Chamber completed', 2, (255, 255, 255), 30, player)
 
     def load_gates(self):
         self.chambers[0][0].grid[23][-1] = 3
@@ -238,6 +242,7 @@ class Gate(Tile):
         self.images = texture
         super().__init__(self.images[1], *args)
         self.prev_rect = self.rect.copy()
+        self.united = False
 
     def open(self):
         self.image = self.images[0]

@@ -96,7 +96,6 @@ class Message(pygame.sprite.Sprite):
         self.rect = line.get_rect()
         self.rect.topleft = pos
         self.rect.y = pos[1] + 100
-        self.dy = 0
         self.image = pygame.Surface((self.rect.w, self.rect.h))
         self.image.set_alpha(0)
         self.image.set_colorkey((0, 0, 0))
@@ -111,8 +110,6 @@ class Message(pygame.sprite.Sprite):
         for timer in self.timers.values():
             timer.tick()
         if self.parent is not None:
-            self.rect.bottomleft = self.parent.rect.topleft
-            self.rect.y -= 20
-        self.rect.y -= self.dy
-        self.dy += 5
+            self.rect.centerx = self.parent.rect.centerx
+            self.rect.y = self.parent.rect.y - 50
         self.image.set_alpha(min(255, self.image.get_alpha() + 10))

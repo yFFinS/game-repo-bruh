@@ -175,7 +175,7 @@ class Game:  # Main class
             projectile.reset_signals()
 
         if self.terrain.signals[MESSAGE]:
-            msg = Message((self.sprite_groups[MESSAGES],), (0, 100), *self.terrain.signals[MESSAGE])
+            msg = Message((self.sprite_groups[ALL],), (0, 100), *self.terrain.signals[MESSAGE])
             msg.rect.x = (self.width - msg.rect.x) // 2
             self.terrain.signals[MESSAGE] = None
 
