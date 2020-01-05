@@ -14,7 +14,7 @@ class Menu:
 
         self.interval = 36
 
-    def add_button(self, text, pos=None, w=350, h=100, target=None, font_size=50):
+    def add_button(self, text, pos=None, w=350, h=100, target=None, font_size=50, switch=False):
         if pos is None:
             if len(self.buttons):
                 b = list(self.buttons)[-1]
@@ -23,7 +23,7 @@ class Menu:
             else:
                 pos = (0, 0)
 
-        self.buttons.add(Button(text, pos, w, h, target, font_size))
+        self.buttons.add(Button(text, pos, w, h, target, font_size, switch))
 
     def render(self, screen):
         w, h = screen.get_width(), screen.get_height()
@@ -54,7 +54,7 @@ class Menu:
 
 
 class Button(pygame.sprite.Sprite):
-    def __init__(self, text, pos, w, h, target=None, font_size=50):
+    def __init__(self, text, pos, w, h, target=None, font_size=50, switch=False):
         super().__init__()
         self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
         self.rect = pygame.rect.Rect([*pos, w, h])
@@ -62,18 +62,23 @@ class Button(pygame.sprite.Sprite):
         self.text_color = pygame.Color('Black')
         self.font = pygame.font.Font(None, font_size)
         self.target = target
+        self.switch = switch
+        self.crossed = False
         self.pressed = False
         self.mouse_in = False
         self.reload_image()
 
     def reload_image(self, alpha=128):
         self.image.fill((255, 255, 255, alpha))
-        pygame.draw.rect(self.image, pygame.Color('black'), [0, 0, self.rect.w, self.rect.h], 5)
         line = self.font.render(self.text, True, self.text_color)
         line_rect = line.get_rect()
         x = (self.rect.w - line_rect.w) // 2
         y = (self.rect.h - line_rect.h) // 2
         self.image.blit(line, (x, y))
+        if self.crossed:
+            pygame.draw.line(self.image, pygame.Color('red'), (0, 0), (self.rect.w - 1, self.rect.h - 1), 5)
+            pygame.draw.line(self.image, pygame.Color('red'), (self.rect.w - 1, 0), (0, self.rect.h - 1), 5)
+        pygame.draw.rect(self.image, pygame.Color('black'), [0, 0, self.rect.w, self.rect.h], 5)
 
     def center(self, width, height):
         self.rect.topleft = (width - self.rect.w) // 2, (height - self.rect.height) // 2
@@ -93,6 +98,8 @@ class Button(pygame.sprite.Sprite):
             if self.rect.collidepoint(*pos) and self.pressed:
                 self.pressed = False
                 self.reload_image()
+                if self.switch:
+                    self.crossed = not self.crossed
                 if self.target is not None:
                     self.target()
             else:

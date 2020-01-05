@@ -22,6 +22,14 @@ def distance_between(pos1, pos2):
     return sqrt((pos1[0] - pos2[0]) * (pos1[0] - pos2[0]) + (pos1[1] - pos2[1]) * (pos1[1] - pos2[1]))
 
 
+def load_sound(name):
+    return pygame.mixer.Sound(os.path.join('sounds', name))
+
+
+def load_music(name):
+    pygame.mixer.music.load(os.path.join('sounds', name))
+
+
 class ColorMask(pygame.sprite.GroupSingle):
     def __init__(self, screen, *args):
         super().__init__(*args)

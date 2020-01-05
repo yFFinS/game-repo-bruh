@@ -1,5 +1,6 @@
 import pygame
 
+pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
 pygame.display.set_caption('Game')
 info = pygame.display.Info()
@@ -24,7 +25,12 @@ class Game:  # Main class
         self.screen = screen
         self.width = width
         self.height = height
+        self._music = True
+        self._sounds = True
         self.clock = pygame.time.Clock()
+        self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
+        load_music('music.mp3')
+        pygame.mixer.music.play(10 ** 8)
 
         self.sprite_groups = None
 
@@ -83,10 +89,24 @@ class Game:  # Main class
                 self.player.look_angle = 180
             self.move(self.player, *move_d)
 
+    def switch_music(self):
+        if self._music:
+            pygame.mixer.music.set_volume(0)
+            self._music = False
+        else:
+            pygame.mixer.music.set_volume(1)
+            self._music = True
+
+    def switch_sounds(self):
+        self._sounds = not self._sounds
+
     def reset(self, level=1):
+        pygame.mixer.music.stop()
+        pygame.mixer.music.play(10 ** 8)
         self.menu = Menu()
         self.menu.add_button('Continue', (self.width // 2 - 150, 200), target=self.open_menu)
-        self.menu.add_button('Settings')
+        self.menu.add_button('Music', target=self.switch_music, switch=True)
+        self.menu.add_button('Sounds', target=self.switch_music, switch=True)
         self.menu.add_button('Quit game', target=self.terminate)
 
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
@@ -115,6 +135,12 @@ class Game:  # Main class
     def open_menu(self):
         self.conditions[INMENU] = not self.conditions[INMENU]
         self.conditions[PAUSED] = True if self.conditions[INMENU] else False
+        if self.conditions[PAUSED]:
+            pygame.mixer.pause()
+            pygame.mixer.music.pause()
+        else:
+            pygame.mixer.unpause()
+            pygame.mixer.music.unpause()
 
     def resize_window(self, w, h):
         self.width, self.height = w, h
@@ -325,6 +351,8 @@ class Game:  # Main class
             Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), sprite.get_pos(), sprite.particle_color,
                      10, 10, 10, 10)
         sprite.kill()
+        if self._sounds:
+            choice(self.death_sounds).play()
 
     def update_sprites(self):
         for sprite in self.sprite_groups[ALL]:
