@@ -14,9 +14,9 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         self.image = pygame.transform.scale(load_image(textures_dir), size)
         self.default_image = self.image
         self.rect = self.image.get_rect()
-        self.rect.x = round(pos[0]) - size[0] // 2
-        self.rect.y = round(pos[1]) - size[1] // 2
-        self.x, self.y = pos[0] - size[0] // 2, pos[1] - size[1] // 2
+        self.rect.centerx = round(pos[0])
+        self.rect.centery = round(pos[1])
+        self.x, self.y = pos[0], pos[1]
         self.hp = hp
         self.velocity = velocity
         self.default_velocity = velocity
@@ -39,9 +39,12 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                        'pathfind': Timer(0.3, target=self.change_condition, args=(CANPATHFIND, True)),
                        'hp_regen': Timer(1, target=self.hp_regen, args=(self.passive_regen,), mode=1)}
         self.conditions[CANPATHFIND] = True
+        self.conditions[WAITING] = True
+        self.timers['wait'].start()
         self.timers['hp_regen'].start()
 
         self.hp_bar = HpBar(groups[-1], self)
+        self.hp_bar.update()
 
     def start_attack_animation(self):
         self.timers['attack_time'].reset()

@@ -96,7 +96,7 @@ class Message(pygame.sprite.Sprite):
         self.rect = line.get_rect()
         self.rect.topleft = pos
         self.rect.y = pos[1] + 100
-        self.end_y = pos[1]
+        self.dy = 0
         self.image = pygame.Surface((self.rect.w, self.rect.h))
         self.image.set_alpha(0)
         self.image.set_colorkey((0, 0, 0))
@@ -113,6 +113,6 @@ class Message(pygame.sprite.Sprite):
         if self.parent is not None:
             self.rect.bottomleft = self.parent.rect.topleft
             self.rect.y -= 20
-        elif self.rect.y > self.end_y:
-            self.rect.y -= 3
+        self.rect.y -= self.dy
+        self.dy += 5
         self.image.set_alpha(min(255, self.image.get_alpha() + 10))

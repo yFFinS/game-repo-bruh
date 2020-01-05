@@ -59,7 +59,10 @@ class Game:  # Main class
             self.fullscreen()
             self.keys_pressed.remove(pygame.K_F11)
         if pygame.K_q in self.keys_pressed:
-            self.terrain.signals[MESSAGE] = ('Bruh',)
+            for ent in self.sprite_groups[ENTITIES]:
+                if type(ent) is not Player:
+                    ent.kill()
+            self.player.velocity = 1000
             self.keys_pressed.remove(pygame.K_q)
 
         if not self.conditions[PAUSED]:
@@ -106,6 +109,7 @@ class Game:  # Main class
         self.pathfinder = PathFinder(self.terrain.obst_grid)
         self.paths = dict()
         self.sprite_groups[PLAYER].add(self.player)
+        self.camera.update()
         
     def open_menu(self):
         self.conditions[INMENU] = not self.conditions[INMENU]
@@ -175,6 +179,9 @@ class Game:  # Main class
             msg.rect.x = (self.width - msg.rect.x) // 2
             self.terrain.signals[MESSAGE] = None
 
+        if self.terrain.signals[END]:
+            self.next_level()
+
     def main(self):  # Main
 
         while self.conditions[RUNNING]:  # Main loop
@@ -192,6 +199,7 @@ class Game:  # Main class
                 self.terrain.update([self.sprite_groups[ENTITIES], self.sprite_groups[ALL]], self.player)
             self.render_sprites()
             self.handle_messages()
+            pygame.draw.rect(self.screen2, (0, 0, 200), self.terrain.end_rect)
             # Screen update
             self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
@@ -301,6 +309,36 @@ class Game:  # Main class
         self.sprite_groups[ALL].update()
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
+
+    def next_level(self):
+        screen = pygame.Surface((self.width, self.height))
+        screen.fill((0, 0, 0))
+        screen.set_colorkey((255, 255, 255))
+        r = 1000
+        pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
+        while r > 0:
+            pygame.draw.circle(screen, (255, 255, 255), pos, r)
+            self.render_sprites()
+            self.screen.blit(self.screen2, (0, 0))
+            self.screen.blit(screen, (0, 0))
+            pygame.display.flip()
+            pygame.draw.circle(screen, (0, 0, 0), pos, r)
+            r -= 10
+            self.clock.tick(FPS)
+        self.reset()
+        screen.fill((0, 0, 0))
+        screen.set_colorkey((255, 255, 255))
+        r = 0
+        pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
+        while r < max(self.width, self.height):
+            pygame.draw.circle(screen, (255, 255, 255), pos, r)
+            self.render_sprites()
+            self.screen.blit(self.screen2, (0, 0))
+            self.screen.blit(screen, (0, 0))
+            pygame.display.flip()
+            pygame.draw.circle(screen, (0, 0, 0), pos, r)
+            r += 20
+            self.clock.tick(FPS)
 
     def render_sprites(self):
         for sprite in self.sprite_groups[ALL]:

@@ -3,7 +3,7 @@ from constants import *
 
 
 class Projectile(pygame.sprite.Sprite):
-    def __init__(self, groups, texture, size, velocity=50, live_time=5, damage=0, team=0, power=200, *args):
+    def __init__(self, groups, texture, size, velocity=50, live_time=5.0, damage=0, team=0, power=200, *args):
         super().__init__(*groups)
         self.image = pygame.transform.scale(texture, size) if texture else pygame.Surface(size)
         self.rect = self.image.get_rect()

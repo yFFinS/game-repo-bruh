@@ -36,4 +36,4 @@ END = 66
 
 # other
 TILE_SIZE = 72
-FPS = 50
+FPS = 100
