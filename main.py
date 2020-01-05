@@ -14,6 +14,7 @@ from menu import Menu
 from camera import *
 from projectiles import *
 from pathfinder import PathFinder
+from particles import Particle
 
 
 class Game:  # Main class
@@ -40,7 +41,7 @@ class Game:  # Main class
         self.pathfinder = None
         self.color_mask = None
         self.reset()
-        self.main()
+        self.start_screen()
 
     def handle_keys(self):
         if pygame.K_F3 in self.keys_pressed:
@@ -61,8 +62,8 @@ class Game:  # Main class
         if pygame.K_q in self.keys_pressed:
             for ent in self.sprite_groups[ENTITIES]:
                 if type(ent) is not Player:
-                    ent.kill()
-            self.player.velocity = 1000
+                    self.kill(ent)
+            self.player.velocity = 5000
             self.keys_pressed.remove(pygame.K_q)
 
         if not self.conditions[PAUSED]:
@@ -82,7 +83,7 @@ class Game:  # Main class
                 self.player.look_angle = 180
             self.move(self.player, *move_d)
 
-    def reset(self):
+    def reset(self, level=1):
         self.menu = Menu()
         self.menu.add_button('Continue', (self.width // 2 - 150, 200), target=self.open_menu)
         self.menu.add_button('Settings')
@@ -96,7 +97,7 @@ class Game:  # Main class
 
         self.keys_pressed = []
 
-        self.terrain = Terrain(16 * 3 * 2, 16 * 3 * 2)
+        self.terrain = Terrain(16 * 3 * 3, 16 * 3 * 3, level)
         self.sprite_groups[CHUNKS] = pygame.sprite.Group(self.terrain.chunks)
         for chunk in self.sprite_groups[CHUNKS]:
             self.sprite_groups[ALL].add(chunk)
@@ -150,7 +151,7 @@ class Game:  # Main class
             if entity.signals[LAUNCH]:
                 p = PROJECTILE_IDS[entity.signals[LAUNCH][0]](
                     (self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
-                    team=entity.team)
+                    team=entity.team, damage_amp=entity.bonus_spell_damage)
 
                 p.launch(entity.get_pos(), entity.signals[LAUNCH][1])
                 if isinstance(p, SightChecker):
@@ -164,14 +165,25 @@ class Game:  # Main class
                     self.move(entity, *entity.signals[PUSH])
                     entity.signals[PUSH] = *entity.signals[PUSH][:2], int(entity.signals[PUSH][2] * 0.95)
 
+            if entity.signals[PARTICLE]:
+                for _ in range(entity.signals[PARTICLE][-1]):
+                    Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), *entity.signals[PARTICLE][:-1])
+                entity.signals[PARTICLE] = None
+
             if entity.signals[DEAD]:
-                entity.kill()
+                self.kill(entity)
 
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
                 self.move(projectile, *projectile.signals[MOVE])
             if projectile.signals[MOVETO]:
                 self.move_to(projectile, projectile.signals[MOVETO])
+            if projectile.signals[PARTICLE]:
+                for _ in range(projectile.signals[PARTICLE][-1]):
+                    Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]),
+                             *projectile.signals[PARTICLE][:-1])
+            if projectile.signals[DEAD]:
+                projectile.die()
             projectile.reset_signals()
 
         if self.terrain.signals[MESSAGE]:
@@ -180,7 +192,12 @@ class Game:  # Main class
             self.terrain.signals[MESSAGE] = None
 
         if self.terrain.signals[END]:
-            self.next_level()
+            self.next_level(self.terrain.signals[END] + 1)
+
+        for particle in self.sprite_groups[PARTICLES]:
+            if particle.signals[MOVE]:
+                self.move(particle, *particle.signals[MOVE], True)
+                particle.signals[MOVE] = None
 
     def main(self):  # Main
 
@@ -230,7 +247,7 @@ class Game:  # Main class
                 sprite.x = x1
                 x2 = x1
                 if isinstance(sprite, Projectile):
-                    sprite.kill()
+                    sprite.die()
             sprite.rect.centery = round(y2)
             sprite.y = y2
             if self.terrain.collide(sprite):
@@ -238,7 +255,7 @@ class Game:  # Main class
                 sprite.y = y1
                 y2 = y1
                 if isinstance(sprite, Projectile):
-                    sprite.kill()
+                    sprite.die()
             if isinstance(sprite, SightChecker)\
                     and pygame.sprite.spritecollide(sprite, self.sprite_groups[PLAYER], False):
                 sprite.parent.change_condition(FIGHTING, True)
@@ -252,7 +269,7 @@ class Game:  # Main class
                             dy = sin(angle)
                             if isinstance(sprite, Enemy) and sprite.target == spr:
                                 spr.push(dx, dy, 500)
-                                spr.hurt(sprite.damage)
+                                spr.hurt(sprite.damage, sprite.get_pos())
                                 sprite.change_condition(FIGHTING, True)
                             else:
                                 spr.signals[MOVE] = (dx, dy)
@@ -265,7 +282,7 @@ class Game:  # Main class
             y2 = y1 + dy * velocity / max(self.clock.get_fps(), 5)
         if isinstance(sprite, Projectile) and type(sprite) is not SightChecker:
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
-                spr.hurt(sprite.damage)
+                spr.hurt(sprite.damage, sprite.get_pos())
                 angle = angle_between(sprite.get_pos(), spr.get_pos())
                 spr.push(cos(angle), sin(angle), sprite.power)
         sprite.rect.centerx, sprite.rect.centery = round(x2), round(y2)
@@ -303,6 +320,12 @@ class Game:  # Main class
         enemy_type = choice(ENEMY_IDS)
         enemy_type((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
 
+    def kill(self, sprite):
+        for _ in range(25):
+            Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), sprite.get_pos(), sprite.particle_color,
+                     10, 10, 10, 10)
+        sprite.kill()
+
     def update_sprites(self):
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite)
@@ -310,7 +333,7 @@ class Game:  # Main class
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
 
-    def next_level(self):
+    def next_level(self, level):
         screen = pygame.Surface((self.width, self.height))
         screen.fill((0, 0, 0))
         screen.set_colorkey((255, 255, 255))
@@ -325,7 +348,7 @@ class Game:  # Main class
             pygame.draw.circle(screen, (0, 0, 0), pos, r)
             r -= 10
             self.clock.tick(FPS)
-        self.reset()
+        self.reset(level)
         screen.fill((0, 0, 0))
         screen.set_colorkey((255, 255, 255))
         r = 0
@@ -339,6 +362,26 @@ class Game:  # Main class
             pygame.draw.circle(screen, (0, 0, 0), pos, r)
             r += 20
             self.clock.tick(FPS)
+
+    def start_screen(self):
+        running = True
+        font = pygame.font.Font(None, 50)
+        line = font.render('Press any key to start...', True, (255, 255, 255))
+        counter = 0
+        x = 35
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    running = False
+            counter += 1
+            self.screen.fill((0, 0, 0))
+            if counter < x:
+                self.screen.blit(line, (self.width // 3, self.height // 3 * 2))
+            elif counter > 2 * x:
+                counter = 0
+            pygame.display.flip()
+            self.clock.tick(30)
+        self.main()
 
     def render_sprites(self):
         for sprite in self.sprite_groups[ALL]:

@@ -47,20 +47,22 @@ def connect_walls(grid):
 
 
 class Terrain:
-    def __init__(self, width_tiles, height_tiles):
+    def __init__(self, width_tiles, height_tiles, level):
+        self.level = level
         self.width = width_tiles
         self.height = height_tiles
         self.signals = {k: None for k in range(60, 70)}
 
         self.bg_grid = [[TILES[0]() for x in range(self.width)] for y in range(self.height)]
 
-        self.chambers = [[Chamber(PRESETS[1], x, y) for x in range(self.width // 48)] for y in range(self.height // 48)]
+        self.chambers = [[Chamber(random.choice(list(PRESETS.values())), x, y)
+                          for x in range(self.width // 48)] for y in range(self.height // 48)]
 
         self.obst_grid = [[TILES[-1] for i in range(self.width)] for j in range(self.height)]
         self.load_gates()
         self.load_obstacles()
 
-        self.end_rect = pygame.rect.Rect(TILE_SIZE * 23, TILE_SIZE * 95, TILE_SIZE * 2, TILE_SIZE)
+        self.end_rect = pygame.rect.Rect(TILE_SIZE * (48 * 3 - 25), TILE_SIZE * (48 * 3 - 1), TILE_SIZE * 2, TILE_SIZE)
 
         self.chunks = [[Chunk((16 * TILE_SIZE * x, 16 * TILE_SIZE * y),
                               [[(self.bg_grid[i][j], self.obst_grid[i][j]) for j in range(16 * x, 16 * (x + 1))] for i
@@ -165,7 +167,7 @@ class Terrain:
             chunk.update(x % 16, y % 16)
         self.to_update = []
         if self.end_rect.colliderect(player.rect):
-            self.signals[END] = True
+            self.signals[END] = self.level
             return
         for y in range(len(self.chambers)):
             for x in range(len(self.chambers[y])):
@@ -175,7 +177,8 @@ class Terrain:
                         self.close_gates()
                         for x1, y1 in self.chambers[y][x].entities:
                             ent = self.chambers[y][x].entities[(x1, y1)]
-                            ent(groups, (x1 + x * TILE_SIZE * 48, y1 + y * TILE_SIZE * 48), player=player)
+                            ent(groups, (x1 + x * TILE_SIZE * 48, y1 + y * TILE_SIZE * 48),
+                                player=player, level=self.level)
                         break
                     elif not self.chambers[y][x].completed:
                         left = sum(1 if isinstance(ent, Enemy) else 0 for ent in groups[0])
@@ -185,23 +188,30 @@ class Terrain:
                             self.signals[MESSAGE] = ('Chamber completed', 2, (255, 255, 255), 30, player)
 
     def load_gates(self):
-        self.chambers[0][0].grid[23][-1] = 3
-        self.chambers[0][0].grid[24][-1] = 4
+        for y in range(3):
+            self.chambers[y][0].grid[23][-1] = 3
+            self.chambers[y][0].grid[24][-1] = 4
 
-        self.chambers[0][1].grid[23][0] = 3
-        self.chambers[0][1].grid[24][0] = 4
-        self.chambers[0][1].grid[-1][23] = 6
-        self.chambers[0][1].grid[-1][24] = 5
+            self.chambers[y][1].grid[23][0] = 3
+            self.chambers[y][1].grid[24][0] = 4
 
-        self.chambers[1][1].grid[0][23] = 6
-        self.chambers[1][1].grid[0][24] = 5
-        self.chambers[1][1].grid[23][0] = 3
-        self.chambers[1][1].grid[24][0] = 4
+            self.chambers[y][1].grid[23][-1] = 3
+            self.chambers[y][1].grid[24][-1] = 4
 
-        self.chambers[1][0].grid[23][-1] = 3
-        self.chambers[1][0].grid[24][-1] = 4
+            self.chambers[y][-1].grid[23][0] = 3
+            self.chambers[y][-1].grid[24][0] = 4
+        self.chambers[0][-1].grid[-1][23] = 6
+        self.chambers[0][-1].grid[-1][24] = 5
+        self.chambers[1][-1].grid[0][23] = 6
+        self.chambers[1][-1].grid[0][24] = 5
+
         self.chambers[1][0].grid[-1][23] = 6
         self.chambers[1][0].grid[-1][24] = 5
+        self.chambers[2][0].grid[0][23] = 6
+        self.chambers[2][0].grid[0][24] = 5
+
+        self.chambers[-1][-1].grid[-1][23] = 6
+        self.chambers[-1][-1].grid[-1][24] = 5
 
     def load_obstacles(self):
         for y1 in range(len(self.chambers)):
