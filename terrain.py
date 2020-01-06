@@ -52,9 +52,12 @@ class Terrain:
         self.width = width_tiles
         self.height = height_tiles
         self.signals = {k: None for k in range(60, 70)}
-
-        self.bg_grid = [[TILES[0]() for x in range(self.width)] for y in range(self.height)]
-
+        if random.random() > 0.5:
+            self.type = 1
+            self.bg_grid = [[random.choice(FLOORS1)() for x in range(self.width)] for y in range(self.height)]
+        else:
+            self.type = 2
+            self.bg_grid = [[random.choice(FLOORS2)() for x in range(self.width)] for y in range(self.height)]
         self.chambers = [[Chamber(random.choice(list(PRESETS.values())), x, y)
                           for x in range(self.width // 48)] for y in range(self.height // 48)]
 
@@ -221,8 +224,14 @@ class Terrain:
                     for x2 in range(len(cur_chamber[0])):
                         if cur_chamber[y2][x2] == -1:
                             continue
-                        self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
-                            = TILES[cur_chamber[y2][x2]]()
+                        if cur_chamber[y2][x2] == 1:
+                            self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
+                                = random.choice(WALLS1)() if self.type == 1 else random.choice(WALLS2)()
+                        elif cur_chamber[y2][x2] == 2:
+                            pass
+                        else:
+                            self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
+                                = TILES[cur_chamber[y2][x2]]()
 
     def close_gates(self):
         for y in range(self.width):
@@ -331,7 +340,13 @@ class Floor1(Tile):
         self.mods.add(TRANSPARENT)
 
 
-class Wall1(Tile):
+class Wall(Tile):
+    def __init__(self, texture, *args, **kwargs):
+        super().__init__(texture, *args)
+        self.united = False
+
+
+class Wall1(Wall):
     def __init__(self, *args, **kwargs):
         super().__init__(TILE_TEXTURES[1], *args)
 
@@ -340,6 +355,51 @@ class Box1(Tile):
     def __init__(self, *args, **kwargs):
         super().__init__(TILE_TEXTURES[2], *args)
         self.mods.add(BREAKABLE)
+
+
+class Wall21(Wall):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[4], *args)
+
+
+class Wall22(Wall):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[5], *args)
+
+
+class Wall23(Wall):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[6], *args)
+
+
+class Floor21(Tile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[7], *args)
+        self.mods.add(TRANSPARENT)
+
+
+class Floor22(Tile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[8], *args)
+        self.mods.add(TRANSPARENT)
+
+
+class Floor23(Tile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[9], *args)
+        self.mods.add(TRANSPARENT)
+
+
+class Floor24(Tile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[10], *args)
+        self.mods.add(TRANSPARENT)
+
+
+class Floor25(Tile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(TILE_TEXTURES[11], *args)
+        self.mods.add(TRANSPARENT)
 
 
 class Chamber:
@@ -361,7 +421,13 @@ class Chamber:
 
 
 TILE_TEXTURES = {0: load_image('floor1.jpg'), 1: load_image('wall1.jpg'), 2: load_image('box1.jpg'),
-                 3: load_image('gate.png')}
+                 3: load_image('gate.png'), 4: load_image('wall2_1.jpg'), 5: load_image('wall2_2.jpg'),
+                 6: load_image('wall2_3.jpg'), 7: load_image('floor2_1.jpg'), 8: load_image('floor2_2.jpg'),
+                 9: load_image('floor2_3.jpg'), 10: load_image('floor2_4.jpg'), 11: load_image('floor2_5.jpg')}
 TILES = {-1: None, 0: Floor1, 1: Wall1, 2: Box1,
          3: UpGate, 4: DownGate, 5: RightGate, 6: LeftGate}
 PRESETS = {1: [[1 if i == 0 or j == 0 or j == 47 or i == 47 else -1 for j in range(48)] for i in range(48)]}
+WALLS1 = [Wall1]
+WALLS2 = [Wall21, Wall22, Wall23]
+FLOORS1 = [Floor1]
+FLOORS2 = [Floor21, Floor22, Floor23, Floor24, Floor25]

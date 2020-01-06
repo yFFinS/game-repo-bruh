@@ -15,6 +15,8 @@ class Projectile(pygame.sprite.Sprite):
         self.dx, self.dy = 0, 0
         self.x, self.y = 0, 0
         self.team = team
+        self.impact_sound = None
+        self.shot_sound = None
         self.mods = set(args)
         self.power = power
         self.counter = 0
@@ -30,6 +32,8 @@ class Projectile(pygame.sprite.Sprite):
         self.dy = sin(angle)
         self.rect.centerx, self.rect.centery = round(pos1[0]), round(pos1[1])
         self.x, self.y = pos1
+        if self.shot_sound:
+            self.shot_sound.play()
 
     def update(self, *args):
         for timer in self.timers.values():
@@ -57,6 +61,8 @@ class Projectile(pygame.sprite.Sprite):
         return self.x, self.y
 
     def die(self):
+        if self.impact_sound:
+            self.impact_sound.play()
         self.kill()
 
 
@@ -85,6 +91,8 @@ class Fireball(Projectile):
 
     def __init__(self, groups, damage_amp=1, team=0):
         super().__init__(groups, PROJECTILE_TEXTURES[0], (30, 30), 450, 2, 100 * damage_amp, team)
+        self.shot_sound = load_sound('fireball_shot.wav')
+        self.impact_sound = load_sound('fireball_explosion.wav')
 
 
 class Skull(HomingProjectile):

@@ -187,6 +187,12 @@ class Player(Entity):  # Player class
         self.timers['launch_time'].start()
         return True
 
+    def update(self):
+        super().update()
+        self.timers['hp_regen'].set_default_time(self.hp / self.get_max_hp())
+        self.passive_regen = max(1, (self.get_max_hp() - self.hp) / secs(0.5))
+        self.velocity = self.default_velocity * (2 - (self.hp / self.get_max_hp()))
+
 
 class Enemy(Entity):  # Enemy class
     def __init__(self, *args, player=None, damage=50, level=1, **kwargs):
@@ -261,7 +267,7 @@ class Mage1(Enemy):
     def __init__(self, groups, pos, player=None, **kwargs):
         super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 150, 150, player=player, **kwargs)
         self.conditions[CANRANGEATTACK] = True
-        self.timers['launch_time'].set_default_time(0.3)
+        self.timers['launch_time'].set_default_time(1.5)
         self.timers['launch_time'].reset()
 
     def ai(self):
@@ -289,7 +295,7 @@ class Mage2(Mage1):
 
 class Warrior1(Enemy):
     def __init__(self, groups, pos, player=None, **kwargs):
-        super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 100, 400, player=player, **kwargs)
+        super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 300, 400, player=player, **kwargs)
 
 
 class HpBar(pygame.sprite.Sprite):

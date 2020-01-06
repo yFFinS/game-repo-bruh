@@ -27,6 +27,7 @@ class Game:  # Main class
         self.height = height
         self._music = True
         self._sounds = True
+        #self.next_level_sound = load_sound('next_level.mp3')
         self.clock = pygame.time.Clock()
         self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
         load_music('music.mp3')
@@ -106,7 +107,7 @@ class Game:  # Main class
         self.menu = Menu()
         self.menu.add_button('Continue', (self.width // 2 - 150, 200), target=self.open_menu)
         self.menu.add_button('Music', target=self.switch_music, switch=True)
-        self.menu.add_button('Sounds', target=self.switch_music, switch=True)
+        self.menu.add_button('Sounds', target=self.switch_sounds, switch=True)
         self.menu.add_button('Quit game', target=self.terminate)
 
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
@@ -226,7 +227,6 @@ class Game:  # Main class
                 particle.signals[MOVE] = None
 
     def main(self):  # Main
-
         while self.conditions[RUNNING]:  # Main loop
             if not self.player.alive():
                 self.reset()
@@ -307,6 +307,10 @@ class Game:  # Main class
             x2 = x1 + dx * velocity / max(self.clock.get_fps(), 5)
             y2 = y1 + dy * velocity / max(self.clock.get_fps(), 5)
         if isinstance(sprite, Projectile) and type(sprite) is not SightChecker:
+            for col in pygame.sprite.spritecollide(sprite, self.sprite_groups[PROJECTILES], False):
+                if col != sprite:
+                    col.die()
+                    sprite.die()
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
                 spr.hurt(sprite.damage, sprite.get_pos())
                 angle = angle_between(sprite.get_pos(), spr.get_pos())
@@ -355,6 +359,10 @@ class Game:  # Main class
             choice(self.death_sounds).play()
 
     def update_sprites(self):
+        while len(self.sprite_groups[PARTICLES]) > 100:
+            for spr in self.sprite_groups[PARTICLES]:
+                spr.kill()
+                break
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite)
         self.sprite_groups[ALL].update()
@@ -367,6 +375,8 @@ class Game:  # Main class
         screen.set_colorkey((255, 255, 255))
         r = 1000
         pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
+
+        #self.next_level_sound.play()
         while r > 0:
             pygame.draw.circle(screen, (255, 255, 255), pos, r)
             self.render_sprites()

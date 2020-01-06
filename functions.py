@@ -30,6 +30,10 @@ def load_music(name):
     pygame.mixer.music.load(os.path.join('sounds', name))
 
 
+def secs(time):
+    return time * FPS
+
+
 class ColorMask(pygame.sprite.GroupSingle):
     def __init__(self, screen, *args):
         super().__init__(*args)

@@ -28,9 +28,10 @@ class Menu:
     def render(self, screen):
         w, h = screen.get_width(), screen.get_height()
         if self.bg.rect.w != w or self.bg.rect.h != h:
-            self.bg.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+            self.bg.image = pygame.Surface((w, h), 32)
+            self.bg.image.set_alpha(64)
             self.bg.rect = pygame.rect.Rect([0, 0, w, h])
-            pygame.draw.rect(self.bg.image, (0, 0, 0, 128), self.bg.rect)
+            pygame.draw.rect(self.bg.image, (0, 0, 0, 64), self.bg.rect)
             self.center_buttons(w, h)
         self.background_group.draw(screen)
         self.buttons.draw(screen)
@@ -70,6 +71,7 @@ class Button(pygame.sprite.Sprite):
 
     def reload_image(self, alpha=128):
         self.image.fill((255, 255, 255, alpha))
+        pygame.draw.rect(self.image, pygame.Color('black'), [0, 0, self.rect.w, self.rect.h], 5)
         line = self.font.render(self.text, True, self.text_color)
         line_rect = line.get_rect()
         x = (self.rect.w - line_rect.w) // 2
@@ -78,7 +80,6 @@ class Button(pygame.sprite.Sprite):
         if self.crossed:
             pygame.draw.line(self.image, pygame.Color('red'), (0, 0), (self.rect.w - 1, self.rect.h - 1), 5)
             pygame.draw.line(self.image, pygame.Color('red'), (self.rect.w - 1, 0), (0, self.rect.h - 1), 5)
-        pygame.draw.rect(self.image, pygame.Color('black'), [0, 0, self.rect.w, self.rect.h], 5)
 
     def center(self, width, height):
         self.rect.topleft = (width - self.rect.w) // 2, (height - self.rect.height) // 2
@@ -97,9 +98,9 @@ class Button(pygame.sprite.Sprite):
         if event_type == pygame.MOUSEBUTTONUP and event_button == pygame.BUTTON_LEFT:
             if self.rect.collidepoint(*pos) and self.pressed:
                 self.pressed = False
-                self.reload_image()
                 if self.switch:
                     self.crossed = not self.crossed
+                self.reload_image()
                 if self.target is not None:
                     self.target()
             else:
