@@ -1,14 +1,22 @@
 # для удобного создания уровней
-# белый - пол, темно-желтый - стена, желтый - разрушаемый, красный - середины
+# белый - пол, темно-желтый - стена, желтый - разрушаемый
 # на клик мышью - меняется на следующий вариант, движение с зажатой кнопкой - изменяет линию на последний выбранный тип
 # стрелки вправо и влево переключают между всеми создаваемыми в ЭТОТ заапуск программы картами + добавляет новую в конец
-# при выходе карты сохраняются в maps списками
+# при выходе карты сохраняются в rooms списками
 
 import pygame
 
 size = 10  # размер одной клетки на экране для создания, можно менять для удобства
-maps = open('maps', 'a')
+maps = open('rooms', 'a')
 levels = [[[1] * 48] + [[1] + [0] * 46 + [1] for i in range(46)] + [[1] * 48]]
+levels[0][0][23] = 0
+levels[0][0][24] = 0
+levels[0][47][23] = 0
+levels[0][47][24] = 0
+levels[0][23][0] = 0
+levels[0][24][0] = 0
+levels[0][23][47] = 0
+levels[0][24][47] = 0
 pygame.init()
 screen = pygame.display.set_mode((48 * size + 47, 48 * size + 47))
 for i in range(48):
@@ -17,14 +25,6 @@ for i in range(48):
             screen.fill((255, 255, 255), (i * (size + 1), j * (size + 1), size, size))
         elif levels[0][j][i] == 1:
             screen.fill((50, 50, 0), (i * (size + 1), j * (size + 1), size, size))
-screen.fill((255, 0, 0), (0, 23 * (size + 1), size, size))
-screen.fill((255, 0, 0), (0, 24 * (size + 1), size, size))
-screen.fill((255, 0, 0), (23 * (size + 1), 0, size, size))
-screen.fill((255, 0, 0), (24 * (size + 1), 0, size, size))
-screen.fill((255, 0, 0), (47 * (size + 1), 23 * (size + 1), size, size))
-screen.fill((255, 0, 0), (47 * (size + 1), 24 * (size + 1), size, size))
-screen.fill((255, 0, 0), (23 * (size + 1), 47 * (size + 1), size, size))
-screen.fill((255, 0, 0), (24 * (size + 1), 47 * (size + 1), size, size))
 pygame.display.flip()
 running = True
 hold = False
@@ -64,6 +64,14 @@ while running:
                 index += 1
                 if index >= len(levels):
                     levels.append([[1] * 48] + [[1] + [0] * 46 + [1] for i in range(46)] + [[1] * 48])
+                    levels[-1][0][23] = 0
+                    levels[-1][0][24] = 0
+                    levels[-1][47][23] = 0
+                    levels[-1][47][24] = 0
+                    levels[-1][23][0] = 0
+                    levels[-1][24][0] = 0
+                    levels[-1][23][47] = 0
+                    levels[-1][24][47] = 0
                 for i in range(48):
                     for j in range(48):
                         if levels[index][j][i] == 0:
@@ -85,4 +93,3 @@ while running:
 for i in range(len(levels)):
     maps.write(str(levels[i]))
     maps.write('\n\n')
-print(*levels, sep='\n')
