@@ -1,5 +1,6 @@
 import pygame
 
+pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
 pygame.display.set_caption('Game')
 info = pygame.display.Info()
@@ -14,6 +15,7 @@ from menu import Menu
 from camera import *
 from projectiles import *
 from pathfinder import PathFinder
+from particles import Particle
 
 
 class Game:  # Main class
@@ -23,7 +25,13 @@ class Game:  # Main class
         self.screen = screen
         self.width = width
         self.height = height
+        self._music = True
+        self._sounds = True
+        #self.next_level_sound = load_sound('next_level.mp3')
         self.clock = pygame.time.Clock()
+        self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
+        load_music('music.mp3')
+        pygame.mixer.music.play(10 ** 8)
 
         self.sprite_groups = None
 
@@ -40,7 +48,7 @@ class Game:  # Main class
         self.pathfinder = None
         self.color_mask = None
         self.reset()
-        self.main()
+        self.start_screen()
 
     def handle_keys(self):
         if pygame.K_F3 in self.keys_pressed:
@@ -59,7 +67,10 @@ class Game:  # Main class
             self.fullscreen()
             self.keys_pressed.remove(pygame.K_F11)
         if pygame.K_q in self.keys_pressed:
-            self.terrain.signals[MESSAGE] = ('Bruh',)
+            for ent in self.sprite_groups[ENTITIES]:
+                if type(ent) is not Player:
+                    self.kill(ent)
+            self.player.velocity = 5000
             self.keys_pressed.remove(pygame.K_q)
 
         if not self.conditions[PAUSED]:
@@ -77,12 +88,30 @@ class Game:  # Main class
                 self.player.look_angle = 0
             elif move_d[0] < 0:
                 self.player.look_angle = 180
+            if move_d == [0, 0]:
+                self.player.i_moving = False
+            else:
+                self.player.i_moving = True
             self.move(self.player, *move_d)
 
-    def reset(self):
+    def switch_music(self):
+        if self._music:
+            pygame.mixer.music.set_volume(0)
+            self._music = False
+        else:
+            pygame.mixer.music.set_volume(1)
+            self._music = True
+
+    def switch_sounds(self):
+        self._sounds = not self._sounds
+
+    def reset(self, level=1):
+        pygame.mixer.music.stop()
+        pygame.mixer.music.play(10 ** 8)
         self.menu = Menu()
         self.menu.add_button('Continue', (self.width // 2 - 150, 200), target=self.open_menu)
-        self.menu.add_button('Settings')
+        self.menu.add_button('Music', target=self.switch_music, switch=True)
+        self.menu.add_button('Sounds', target=self.switch_sounds, switch=True)
         self.menu.add_button('Quit game', target=self.terminate)
 
         self.sprite_groups = {k: pygame.sprite.Group() for k in range(20, 30)}
@@ -93,7 +122,7 @@ class Game:  # Main class
 
         self.keys_pressed = []
 
-        self.terrain = Terrain(16 * 3 * 2, 16 * 3 * 2)
+        self.terrain = Terrain(16 * 3 * 3, 16 * 3 * 3, level)
         self.sprite_groups[CHUNKS] = pygame.sprite.Group(self.terrain.chunks)
         for chunk in self.sprite_groups[CHUNKS]:
             self.sprite_groups[ALL].add(chunk)
@@ -106,10 +135,17 @@ class Game:  # Main class
         self.pathfinder = PathFinder(self.terrain.obst_grid)
         self.paths = dict()
         self.sprite_groups[PLAYER].add(self.player)
+        self.camera.update()
         
     def open_menu(self):
         self.conditions[INMENU] = not self.conditions[INMENU]
         self.conditions[PAUSED] = True if self.conditions[INMENU] else False
+        if self.conditions[PAUSED]:
+            pygame.mixer.pause()
+            pygame.mixer.music.pause()
+        else:
+            pygame.mixer.unpause()
+            pygame.mixer.music.unpause()
 
     def resize_window(self, w, h):
         self.width, self.height = w, h
@@ -146,7 +182,7 @@ class Game:  # Main class
             if entity.signals[LAUNCH]:
                 p = PROJECTILE_IDS[entity.signals[LAUNCH][0]](
                     (self.sprite_groups[PROJECTILES], self.sprite_groups[ALL]),
-                    team=entity.team)
+                    team=entity.team, damage_amp=entity.bonus_spell_damage)
 
                 p.launch(entity.get_pos(), entity.signals[LAUNCH][1])
                 if isinstance(p, SightChecker):
@@ -160,23 +196,41 @@ class Game:  # Main class
                     self.move(entity, *entity.signals[PUSH])
                     entity.signals[PUSH] = *entity.signals[PUSH][:2], int(entity.signals[PUSH][2] * 0.95)
 
+            if entity.signals[PARTICLE]:
+                for _ in range(entity.signals[PARTICLE][-1]):
+                    Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), *entity.signals[PARTICLE][:-1])
+                entity.signals[PARTICLE] = None
+
             if entity.signals[DEAD]:
-                entity.kill()
+                self.kill(entity)
 
         for projectile in self.sprite_groups[PROJECTILES]:
             if projectile.signals[MOVE]:
                 self.move(projectile, *projectile.signals[MOVE])
             if projectile.signals[MOVETO]:
                 self.move_to(projectile, projectile.signals[MOVETO])
+            if projectile.signals[PARTICLE]:
+                for _ in range(projectile.signals[PARTICLE][-1]):
+                    Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]),
+                             *projectile.signals[PARTICLE][:-1])
+            if projectile.signals[DEAD]:
+                projectile.die()
             projectile.reset_signals()
 
         if self.terrain.signals[MESSAGE]:
-            msg = Message((self.sprite_groups[MESSAGES],), (0, 100), *self.terrain.signals[MESSAGE])
+            msg = Message((self.sprite_groups[ALL],), (0, 100), *self.terrain.signals[MESSAGE])
             msg.rect.x = (self.width - msg.rect.x) // 2
             self.terrain.signals[MESSAGE] = None
 
-    def main(self):  # Main
+        if self.terrain.signals[END]:
+            self.next_level(self.terrain.signals[END] + 1)
 
+        for particle in self.sprite_groups[PARTICLES]:
+            if particle.signals[MOVE]:
+                self.move(particle, *particle.signals[MOVE], True)
+                particle.signals[MOVE] = None
+
+    def main(self):  # Main
         while self.conditions[RUNNING]:  # Main loop
             if not self.player.alive():
                 self.reset()
@@ -192,6 +246,7 @@ class Game:  # Main class
                 self.terrain.update([self.sprite_groups[ENTITIES], self.sprite_groups[ALL]], self.player)
             self.render_sprites()
             self.handle_messages()
+            pygame.draw.rect(self.screen2, (0, 0, 200), self.terrain.end_rect)
             # Screen update
             self.screen.blit(self.screen2, (0, 0))
             if self.conditions[DEBUGGING]:
@@ -222,7 +277,7 @@ class Game:  # Main class
                 sprite.x = x1
                 x2 = x1
                 if isinstance(sprite, Projectile):
-                    sprite.kill()
+                    sprite.die()
             sprite.rect.centery = round(y2)
             sprite.y = y2
             if self.terrain.collide(sprite):
@@ -230,7 +285,7 @@ class Game:  # Main class
                 sprite.y = y1
                 y2 = y1
                 if isinstance(sprite, Projectile):
-                    sprite.kill()
+                    sprite.die()
             if isinstance(sprite, SightChecker)\
                     and pygame.sprite.spritecollide(sprite, self.sprite_groups[PLAYER], False):
                 sprite.parent.change_condition(FIGHTING, True)
@@ -244,7 +299,7 @@ class Game:  # Main class
                             dy = sin(angle)
                             if isinstance(sprite, Enemy) and sprite.target == spr:
                                 spr.push(dx, dy, 500)
-                                spr.hurt(sprite.damage)
+                                spr.hurt(sprite.damage, sprite.get_pos())
                                 sprite.change_condition(FIGHTING, True)
                             else:
                                 spr.signals[MOVE] = (dx, dy)
@@ -256,8 +311,12 @@ class Game:  # Main class
             x2 = x1 + dx * velocity / max(self.clock.get_fps(), 5)
             y2 = y1 + dy * velocity / max(self.clock.get_fps(), 5)
         if isinstance(sprite, Projectile) and type(sprite) is not SightChecker:
+            for col in pygame.sprite.spritecollide(sprite, self.sprite_groups[PROJECTILES], False):
+                if col != sprite:
+                    col.die()
+                    sprite.die()
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
-                spr.hurt(sprite.damage)
+                spr.hurt(sprite.damage, sprite.get_pos())
                 angle = angle_between(sprite.get_pos(), spr.get_pos())
                 spr.push(cos(angle), sin(angle), sprite.power)
         sprite.rect.centerx, sprite.rect.centery = round(x2), round(y2)
@@ -295,12 +354,76 @@ class Game:  # Main class
         enemy_type = choice(ENEMY_IDS)
         enemy_type((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
 
+    def kill(self, sprite):
+        for _ in range(25):
+            Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), sprite.get_pos(), sprite.particle_color,
+                     10, 10, 10, 10)
+        sprite.kill()
+        if self._sounds:
+            choice(self.death_sounds).play()
+
     def update_sprites(self):
+        while len(self.sprite_groups[PARTICLES]) > 100:
+            for spr in self.sprite_groups[PARTICLES]:
+                spr.kill()
+                break
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite)
         self.sprite_groups[ALL].update()
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite, True)
+
+    def next_level(self, level):
+        screen = pygame.Surface((self.width, self.height))
+        screen.fill((0, 0, 0))
+        screen.set_colorkey((255, 255, 255))
+        r = 1000
+        pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
+
+        #self.next_level_sound.play()
+        while r > 0:
+            pygame.draw.circle(screen, (255, 255, 255), pos, r)
+            self.render_sprites()
+            self.screen.blit(self.screen2, (0, 0))
+            self.screen.blit(screen, (0, 0))
+            pygame.display.flip()
+            pygame.draw.circle(screen, (0, 0, 0), pos, r)
+            r -= 10
+            self.clock.tick(FPS)
+        self.reset(level)
+        screen.fill((0, 0, 0))
+        screen.set_colorkey((255, 255, 255))
+        r = 0
+        pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
+        while r < max(self.width, self.height):
+            pygame.draw.circle(screen, (255, 255, 255), pos, r)
+            self.render_sprites()
+            self.screen.blit(self.screen2, (0, 0))
+            self.screen.blit(screen, (0, 0))
+            pygame.display.flip()
+            pygame.draw.circle(screen, (0, 0, 0), pos, r)
+            r += 20
+            self.clock.tick(FPS)
+
+    def start_screen(self):
+        running = True
+        font = pygame.font.Font(None, 50)
+        line = font.render('Press any key to start...', True, (255, 255, 255))
+        counter = 0
+        x = 35
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    running = False
+            counter += 1
+            self.screen.fill((0, 0, 0))
+            if counter < x:
+                self.screen.blit(line, (self.width // 3, self.height // 3 * 2))
+            elif counter > 2 * x:
+                counter = 0
+            pygame.display.flip()
+            self.clock.tick(30)
+        self.main()
 
     def render_sprites(self):
         for sprite in self.sprite_groups[ALL]:
@@ -386,6 +509,8 @@ class Game:  # Main class
                         self.delete_enemy(self.camera.apply_pos(event.pos))
                     else:
                         self.player.try_range_attack(self.camera.apply_pos(event.pos))
+                elif event.button == pygame.BUTTON_LEFT:
+                    self.player.try_attack(self.camera.apply_pos(event.pos))
 
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT:

@@ -22,6 +22,18 @@ def distance_between(pos1, pos2):
     return sqrt((pos1[0] - pos2[0]) * (pos1[0] - pos2[0]) + (pos1[1] - pos2[1]) * (pos1[1] - pos2[1]))
 
 
+def load_sound(name):
+    return pygame.mixer.Sound(os.path.join('sounds', name))
+
+
+def load_music(name):
+    pygame.mixer.music.load(os.path.join('sounds', name))
+
+
+def secs(time):
+    return time * FPS
+
+
 class ColorMask(pygame.sprite.GroupSingle):
     def __init__(self, screen, *args):
         super().__init__(*args)
@@ -96,7 +108,6 @@ class Message(pygame.sprite.Sprite):
         self.rect = line.get_rect()
         self.rect.topleft = pos
         self.rect.y = pos[1] + 100
-        self.end_y = pos[1]
         self.image = pygame.Surface((self.rect.w, self.rect.h))
         self.image.set_alpha(0)
         self.image.set_colorkey((0, 0, 0))
@@ -111,8 +122,6 @@ class Message(pygame.sprite.Sprite):
         for timer in self.timers.values():
             timer.tick()
         if self.parent is not None:
-            self.rect.bottomleft = self.parent.rect.topleft
-            self.rect.y -= 20
-        elif self.rect.y > self.end_y:
-            self.rect.y -= 3
+            self.rect.centerx = self.parent.rect.centerx
+            self.rect.y = self.parent.rect.y - 50
         self.image.set_alpha(min(255, self.image.get_alpha() + 10))
