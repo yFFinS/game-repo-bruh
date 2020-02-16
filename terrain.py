@@ -167,15 +167,12 @@ class Terrain:
 
     def collide(self, sprite):
         broken = pygame.sprite.spritecollide(sprite, self.breakables, False)
-        to_kill = []
         for spr in broken:
             x, y = spr.rect.topleft
             x //= TILE_SIZE
             y //= TILE_SIZE
             self.chunks[x // 16][y // 16].change_tile(x % 16, y % 16, self.bg_grid[x][y])
             spr.kill()
-            print('killed', x, y)
-            print(self.chunks[y // 16][x // 16].matrix[x % 16][y % 16])
 
         is_collided = pygame.sprite.spritecollideany(sprite, self.walls) is not None
         return is_collided

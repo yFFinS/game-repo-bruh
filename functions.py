@@ -44,7 +44,6 @@ def is_sounds():
 def switch_sounds():
     global sounds_enabled
     sounds_enabled = not sounds_enabled
-    print(sounds_enabled)
 
 
 class ColorMask(pygame.sprite.GroupSingle):

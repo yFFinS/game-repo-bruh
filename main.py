@@ -60,18 +60,9 @@ class Game:  # Main class
         if pygame.K_ESCAPE in self.keys_pressed:
             self.keys_pressed.remove(pygame.K_ESCAPE)
             self.open_menu()
-        if pygame.K_SPACE in self.keys_pressed:
-            self.keys_pressed.remove(pygame.K_SPACE)
-            self.reset()
         if pygame.K_F11 in self.keys_pressed:
             self.fullscreen()
             self.keys_pressed.remove(pygame.K_F11)
-        if pygame.K_q in self.keys_pressed:
-            for ent in self.sprite_groups[ENTITIES]:
-                if type(ent) is not Player:
-                    self.kill(ent)
-            self.player.velocity = 5000
-            self.keys_pressed.remove(pygame.K_q)
 
         if not self.conditions[PAUSED]:
             # Move calculation
