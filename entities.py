@@ -172,8 +172,8 @@ class Player(Entity):  # Player class
         super().__init__(groups, pos, PLAYER_TEXTURES, (50, 50), 300, 300)
         self.enemies = None
         self.team = -1
-        self.default_damage = 50
-        self.damage = 50
+        self.default_damage = 100
+        self.damage = 100
         self.conditions[CANRANGEATTACK] = True
         self.timers['launch_time'].set_default_time(1)
         self.timers['launch_time'].reset()
@@ -183,6 +183,7 @@ class Player(Entity):  # Player class
         self.player4 = pygame.transform.scale(load_image('player4.png'), (50, 50))
         self.switch_cadr = 20
         self.switch_cadr_attack = 10
+        self.cadr_attack = 0
         self.he_attack = False
         self.now_position = (0, 0)
         self.i_moving = False
@@ -194,15 +195,19 @@ class Player(Entity):  # Player class
 
     def try_attack(self, pos):
         if not self.he_attack:
-            self.cadr = 0
+            self.cadr_attack = 0
             self.he_attack = True
             self.now_position = pos
-        if not self.cadr and self.he_attack:
             self.image = self.player4
             self.default_image = self.image
-        if self.cadr == self.switch_cadr_attack:
-            self.cadr = 0
+            self.which_sprite = 0
+        if self.cadr_attack == self.switch_cadr_attack:
+            self.cadr_attack = 0
             self.he_attack = False
+            self.image = self.player1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
 
     def try_range_attack(self, pos):
         if not self.conditions[CANRANGEATTACK]:
@@ -213,7 +218,7 @@ class Player(Entity):  # Player class
         return True
 
     def update(self):
-        if not self.i_moving:
+        if not self.i_moving and not self.he_attack:
             self.image = self.player1
             self.which_sprite = 1
             self.cadr = 0
@@ -239,6 +244,7 @@ class Player(Entity):  # Player class
             self.cadr = 0
             self.default_image = self.image
         if self.he_attack:
+            self.cadr_attack += 1
             self.try_attack(self.now_position)
         self.cadr += 1
         super().update()
@@ -335,6 +341,43 @@ class Mage1(Enemy):
         self.conditions[CANRANGEATTACK] = True
         self.timers['launch_time'].set_default_time(1.5)
         self.timers['launch_time'].reset()
+        self.mage1 = pygame.transform.scale(load_image('mage1.png'), (50, 50))
+        self.mage2 = pygame.transform.scale(load_image('mage2.png'), (50, 50))
+        self.mage3 = pygame.transform.scale(load_image('mage3.png'), (50, 50))
+        self.mage4 = pygame.transform.scale(load_image('mage4.png'), (50, 50))
+        self.mage5 = pygame.transform.scale(load_image('mage5.png'), (50, 50))
+        self.he_moving = False
+        self.which_sprite = 1
+        self.switch_cadr = 17
+
+    def update(self):
+        if self.conditions[WAITING]:
+            self.image = self.mage1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 1:
+            self.image = self.mage2
+            self.which_sprite = 2
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 2:
+            self.image = self.mage3
+            self.which_sprite = 3
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 3:
+            self.image = self.mage2
+            self.which_sprite = 4
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 4:
+            self.image = self.mage1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        self.cadr += 1
+        super().update()
 
     def ai(self):
         if self.conditions[FIGHTING]:
@@ -356,11 +399,86 @@ class Mage2(Mage1):
         self.projectile = 1
         self.timers['launch_time'].set_default_time(15)
         self.timers['launch_time'].reset()
+        self.mage1 = pygame.transform.scale(load_image('mage1.png'), (50, 50))
+        self.mage2 = pygame.transform.scale(load_image('mage2.png'), (50, 50))
+        self.mage3 = pygame.transform.scale(load_image('mage3.png'), (50, 50))
+        self.mage4 = pygame.transform.scale(load_image('mage4.png'), (50, 50))
+        self.mage5 = pygame.transform.scale(load_image('mage5.png'), (50, 50))
+        self.he_moving = False
+        self.which_sprite = 1
+        self.switch_cadr = 17
+
+    def update(self):
+        if self.conditions[WAITING]:
+            self.image = self.mage1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 1:
+            self.image = self.mage2
+            self.which_sprite = 2
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 2:
+            self.image = self.mage3
+            self.which_sprite = 3
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 3:
+            self.image = self.mage2
+            self.which_sprite = 4
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 4:
+            self.image = self.mage1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        self.cadr += 1
+        super().update()
+
 
 
 class Warrior1(Enemy):
     def __init__(self, groups, pos, player=None, **kwargs):
         super().__init__(groups, pos, ENEMY_TEXTURES[1], (50, 50), 300, 400, player=player, **kwargs)
+        self.warrior1 = pygame.transform.scale(load_image('warrior1.png'), (50, 50))
+        self.warrior2 = pygame.transform.scale(load_image('warrior2.png'), (50, 50))
+        self.warrior3 = pygame.transform.scale(load_image('warrior3.png'), (50, 50))
+        self.warrior4 = pygame.transform.scale(load_image('warrior4.png'), (50, 50))
+        self.warrior5 = pygame.transform.scale(load_image('warrior5.png'), (50, 50))
+        self.he_moving = False
+        self.which_sprite = 1
+        self.switch_cadr = 17
+
+    def update(self):
+        if self.conditions[WAITING]:
+            self.image = self.warrior2
+            self.which_sprite = 2
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 1:
+            self.image = self.warrior2
+            self.which_sprite = 2
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 2:
+            self.image = self.warrior3
+            self.which_sprite = 3
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 3:
+            self.image = self.warrior2
+            self.which_sprite = 4
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 4:
+            self.image = self.warrior1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        self.cadr += 1
+        super().update()
 
 
 class HpBar(pygame.sprite.Sprite):
