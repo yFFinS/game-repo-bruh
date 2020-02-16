@@ -96,6 +96,15 @@ class Fireball(Projectile):
         self.impact_sound = load_sound('fireball_explosion.wav')
 
 
+class Shuriken(Projectile):
+    damage = 100
+
+    def __init__(self, groups, damage_amp=1, team=0):
+        super().__init__(groups, PROJECTILE_TEXTURES[2], (30, 30), 450, 2, 100 * damage_amp, team)
+        self.shot_sound = load_sound('fireball_shot.wav')
+        self.impact_sound = load_sound('fireball_explosion.wav')
+
+
 class Skull(HomingProjectile):
     damage = 250
 
@@ -104,5 +113,5 @@ class Skull(HomingProjectile):
         self.mods = {TRANSPARENT}
 
 
-PROJECTILE_TEXTURES = {0: load_image('fireball.png'), 1: load_image('skull.png')}
-PROJECTILE_IDS = {-1: SightChecker, 0: Fireball, 1: Skull}
+PROJECTILE_TEXTURES = {0: load_image('fireball.png'), 1: load_image('skull.png'), 2: load_image('shuriken_4.png')}
+PROJECTILE_IDS = {-1: SightChecker, 0: Fireball, 1: Skull, 2: Shuriken}
