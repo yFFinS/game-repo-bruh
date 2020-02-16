@@ -7,6 +7,24 @@ from entities import ENEMY_IDS, Enemy
 from functions import load_image
 
 
+PRESETS = {}
+
+
+def load_rooms():
+    c = 0
+    with open("rooms") as file:
+        for line in file.readlines():
+            line = line.strip()
+            if not line:
+                continue
+            arr = eval(line)
+            PRESETS[c] = arr
+            c += 1
+
+
+load_rooms()
+
+
 def neighbours(grid, x, y):
     return set([grid[y + dy][x + dx] for dx in [-1, 0, 1] if -1 < x + dx < len(grid[0]) for dy in [-1, 0, 1] if
                 -1 < y + dy < len(grid)])
@@ -52,6 +70,7 @@ class Terrain:
         self.width = width_tiles
         self.height = height_tiles
         self.signals = {k: None for k in range(60, 70)}
+        self.player_on_spawn = False
         if random.random() > 0.5:
             self.type = 1
             self.bg_grid = [[random.choice(FLOORS1)() for x in range(self.width)] for y in range(self.height)]
@@ -151,17 +170,14 @@ class Terrain:
         to_kill = []
         for spr in broken:
             x, y = spr.rect.topleft
-            for wall in self.walls:
-                if wall.rect.topleft == (x, y):
-                    to_kill.append(wall)
             x //= TILE_SIZE
             y //= TILE_SIZE
-            self.chunks[y // 16][x // 16].change_tile(x % 16, y % 16, self.bg_grid[y][x])
+            self.chunks[x // 16][y // 16].change_tile(x % 16, y % 16, self.bg_grid[x][y])
             spr.kill()
+            print('killed', x, y)
+            print(self.chunks[y // 16][x // 16].matrix[x % 16][y % 16])
 
         is_collided = pygame.sprite.spritecollideany(sprite, self.walls) is not None
-        for wall in to_kill:
-            wall.kill()
         return is_collided
 
     def update(self, groups, player):
@@ -177,6 +193,12 @@ class Terrain:
                 if self.chambers[y][x].rect.contains(player.rect):
                     if not self.chambers[y][x].visited:
                         self.chambers[y][x].start()
+                        if not self.player_on_spawn:
+                            player.rect.center = self.chambers[y][x].player_spawn[0] * TILE_SIZE + TILE_SIZE // 2,\
+                                                  self.chambers[y][x].player_spawn[1] * TILE_SIZE + TILE_SIZE // 2
+                            player.x = player.rect.centerx
+                            player.y = player.rect.centery
+                            self.player_on_spawn = True
                         self.close_gates()
                         for x1, y1 in self.chambers[y][x].entities:
                             ent = self.chambers[y][x].entities[(x1, y1)]
@@ -228,7 +250,8 @@ class Terrain:
                             self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
                                 = random.choice(WALLS1)() if self.type == 1 else random.choice(WALLS2)()
                         elif cur_chamber[y2][x2] == 2:
-                            pass
+                            self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
+                                = Box1()
                         else:
                             self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
                                 = TILES[cur_chamber[y2][x2]]()
@@ -403,21 +426,34 @@ class Floor25(Tile):
 
 
 class Chamber:
+    gates = [(23, 0), (24, 0), (0, 23), (0, 24), (23, -1), (24, -1), (-1, 23), (-1, 24)]
+
     def __init__(self, grid, x, y):
         self.rect = pygame.rect.Rect([x * TILE_SIZE * len(grid[0]) + TILE_SIZE, y * TILE_SIZE * len(grid) + TILE_SIZE,
                                       (len(grid[0]) - 2) * TILE_SIZE, (len(grid) - 2) * TILE_SIZE])
         self.grid = [[grid[y][x] for x in range(len(grid[y]))] for y in range(len(grid))]
+        for x, y in Chamber.gates:
+            self.grid[x][y] = 1
         self.entities = dict()
+        self.player_spawn = (0, 0)
         self.visited = False
         self.completed = False
 
     def start(self):
         self.visited = True
-        amount = random.randint(6, 12)
+        possible_spawns = []
+        for i in range(len(self.grid)):
+            for j in range(len(self.grid[i])):
+                if self.grid[i][j] == -1:
+                    possible_spawns.append((j, i))
+        amount = min(random.randint(6, 12), len(possible_spawns) - 1)
         while len(self.entities) != amount:
-            x, y = random.randint(1, len(self.grid[0]) - 1), random.randint(1, len(self.grid) - 1)
-            if self.grid[y][x] == -1:
-                self.entities[(TILE_SIZE * x + TILE_SIZE // 2, TILE_SIZE * y + TILE_SIZE // 2)] = random.choice(ENEMY_IDS)
+            r = random.choice(possible_spawns)
+            possible_spawns.remove(r)
+            x, y = r
+            self.entities[(TILE_SIZE * x + TILE_SIZE // 2, TILE_SIZE * y + TILE_SIZE // 2)] = random.choice(ENEMY_IDS)
+        self.player_spawn = random.choice(possible_spawns)
+
 
 
 TILE_TEXTURES = {0: load_image('floor1.jpg'), 1: load_image('wall1.jpg'), 2: load_image('box1.jpg'),
@@ -426,7 +462,6 @@ TILE_TEXTURES = {0: load_image('floor1.jpg'), 1: load_image('wall1.jpg'), 2: loa
                  9: load_image('floor2_3.jpg'), 10: load_image('floor2_4.jpg'), 11: load_image('floor2_5.jpg')}
 TILES = {-1: None, 0: Floor1, 1: Wall1, 2: Box1,
          3: UpGate, 4: DownGate, 5: RightGate, 6: LeftGate}
-PRESETS = {1: [[1 if i == 0 or j == 0 or j == 47 or i == 47 else -1 for j in range(48)] for i in range(48)]}
 WALLS1 = [Wall1]
 WALLS2 = [Wall21, Wall22, Wall23]
 FLOORS1 = [Floor1]

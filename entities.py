@@ -172,6 +172,8 @@ class Player(Entity):  # Player class
         super().__init__(groups, pos, PLAYER_TEXTURES, (50, 50), 300, 300)
         self.enemies = None
         self.team = -1
+        self.default_damage = 50
+        self.damage = 50
         self.conditions[CANRANGEATTACK] = True
         self.timers['launch_time'].set_default_time(1)
         self.timers['launch_time'].reset()
@@ -184,9 +186,6 @@ class Player(Entity):  # Player class
         self.he_attack = False
         self.now_position = (0, 0)
         self.i_moving = False
-
-    def attack(self, target=None):
-        pass
 
     def start_attacking(self):
         if not self.timers['attack_time'].is_started():
@@ -207,7 +206,7 @@ class Player(Entity):  # Player class
 
     def try_range_attack(self, pos):
         if not self.conditions[CANRANGEATTACK]:
-            return
+            return False
         self.launch_projectile(0, pos)
         self.conditions[CANRANGEATTACK] = False
         self.timers['launch_time'].start()
@@ -246,15 +245,16 @@ class Player(Entity):  # Player class
         self.timers['hp_regen'].set_default_time(self.hp / self.get_max_hp())
         self.passive_regen = max(1, (self.get_max_hp() - self.hp) / secs(0.5))
         self.velocity = self.default_velocity * (2 - (self.hp / self.get_max_hp()))
+        self.damage = self.default_damage * (2 - self.hp / self.get_max_hp())
 
 
 class Enemy(Entity):  # Enemy class
     def __init__(self, *args, player=None, damage=50, level=1, **kwargs):
         super().__init__(*args, **kwargs)
         self.player = player
-        self.fov = 60
+        self.fov = 120
         self.player_pos = self.player.get_pos()
-        self.view_range = 600
+        self.view_range = 800
         self.target = self.player
         self.timers['player_near'] = Timer(3, target=self.change_condition, args=(FIGHTING, True))
         self.timers['wait'].start()
@@ -269,7 +269,7 @@ class Enemy(Entity):  # Enemy class
         self.stop = 0
 
     def check_for_player(self):  # Checks for player in self line-of-sight
-        if not self.conditions[FIGHTING]:
+        if self.conditions[FIGHTING]:
             return
         if distance_between(self.player.get_pos(), self.get_pos()) <= 50:
             if not self.timers['player_near'].is_started():
@@ -297,13 +297,13 @@ class Enemy(Entity):  # Enemy class
 
     def update(self):  # Updates self + AI
         super().update()
-        if self.timers['attack_time'].is_started():
-            self.attack()
         if not self.is_sleep():
             if self.conditions[FIGHTING]:
                 self.look_angle = degrees(angle_between(self.get_pos(), self.target.get_pos()))
                 self.rotate(0)
-            self.attack_now()
+                self.attack_now()
+            else:
+                self.ai()
 
     def attack_now(self):
         if self.conditions[ATTACK]:
@@ -338,12 +338,12 @@ class Mage1(Enemy):
 
     def ai(self):
         if self.conditions[FIGHTING]:
-            attacked = self.try_range_attack()
-            if not attacked:
-                if distance_between(self.get_pos(), self.target.get_pos()) > 600:
-                    self.move_to_target()
-                if distance_between(self.get_pos(), self.target.get_pos()) < 250:
-                    self.move_from(self.target.get_pos())
+            if distance_between(self.get_pos(), self.target.get_pos()) > 600:
+                self.move_to_target()
+            else:
+                self.try_range_attack()
+            if distance_between(self.get_pos(), self.target.get_pos()) < 250:
+                self.move_from(self.target.get_pos())
         else:
             if not self.conditions[WAITING]:
                 self.move_forward()
