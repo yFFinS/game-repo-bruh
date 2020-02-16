@@ -88,6 +88,10 @@ class Game:  # Main class
                 self.player.look_angle = 0
             elif move_d[0] < 0:
                 self.player.look_angle = 180
+            if move_d == [0, 0]:
+                self.player.i_moving = False
+            else:
+                self.player.i_moving = True
             self.move(self.player, *move_d)
 
     def switch_music(self):
@@ -505,6 +509,8 @@ class Game:  # Main class
                         self.delete_enemy(self.camera.apply_pos(event.pos))
                     else:
                         self.player.try_range_attack(self.camera.apply_pos(event.pos))
+                elif event.button == pygame.BUTTON_LEFT:
+                    self.player.try_attack(self.camera.apply_pos(event.pos))
 
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT:
