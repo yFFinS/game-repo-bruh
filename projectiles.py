@@ -32,17 +32,18 @@ class Projectile(pygame.sprite.Sprite):
         self.dy = sin(angle)
         self.rect.centerx, self.rect.centery = round(pos1[0]), round(pos1[1])
         self.x, self.y = pos1
-        if self.shot_sound:
+        if self.shot_sound and is_sounds():
             self.shot_sound.play()
 
     def update(self, *args):
         for timer in self.timers.values():
             timer.tick()
         self.move()
-        self.counter += 1
-        if self.counter % 4 == 0:
-            self.signals[PARTICLE] = (self.get_pos(), self.particle_color, 20, 20, random.randint(-20, 20), random.randint(-20, 20), '', 1)
-            self.counter = 0
+        if not isinstance(self, SightChecker):
+            self.counter += 1
+            if self.counter % 4 == 0:
+                self.signals[PARTICLE] = (self.get_pos(), self.particle_color, 20, 20, random.randint(-20, 20), random.randint(-20, 20), '', 1)
+                self.counter = 0
 
     def move(self):
         self.signals[MOVE] = (self.dx, self.dy)
@@ -61,7 +62,7 @@ class Projectile(pygame.sprite.Sprite):
         return self.x, self.y
 
     def die(self):
-        if self.impact_sound:
+        if self.impact_sound and is_sounds():
             self.impact_sound.play()
         self.kill()
 
@@ -82,7 +83,7 @@ class HomingProjectile(Projectile):
 
 class SightChecker(Projectile):
     def __init__(self, group, team=0, damage_amp=1, parent=None):
-        super().__init__(group, PROJECTILE_TEXTURES[0], (0, 0), 3000, 0.2, 0, team)
+        super().__init__(group, PROJECTILE_TEXTURES[0], (1, 1), 1000, 0.2, 0, team)
         self.parent = parent
 
 
@@ -100,7 +101,7 @@ class Skull(HomingProjectile):
 
     def __init__(self, groups, damage_amp=1, team=0):
         super().__init__(groups, PROJECTILE_TEXTURES[1], (60, 60), 50, 10, 250 * damage_amp, team)
-        self.mods = TRANSPARENT
+        self.mods = {TRANSPARENT}
 
 
 PROJECTILE_TEXTURES = {0: load_image('fireball.png'), 1: load_image('skull.png')}

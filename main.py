@@ -1,6 +1,7 @@
 import pygame
 
-pygame.mixer.pre_init(44100, -16, 1, 512)
+pygame.mixer.pre_init(44100, -16, 1, 1024)
+pygame.mixer.init()
 pygame.init()
 pygame.display.set_caption('Game')
 info = pygame.display.Info()
@@ -27,7 +28,6 @@ class Game:  # Main class
         self.height = height
         self._music = True
         self._sounds = True
-        #self.next_level_sound = load_sound('next_level.mp3')
         self.clock = pygame.time.Clock()
         self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
         load_music('music.mp3')
@@ -88,18 +88,21 @@ class Game:  # Main class
                 self.player.look_angle = 0
             elif move_d[0] < 0:
                 self.player.look_angle = 180
+            if move_d == [0, 0]:
+                self.player.i_moving = False
+            else:
+                self.player.i_moving = True
             self.move(self.player, *move_d)
 
     def switch_music(self):
         if self._music:
-            pygame.mixer.music.set_volume(0)
-            self._music = False
+            pygame.mixer.music.stop()
         else:
-            pygame.mixer.music.set_volume(1)
-            self._music = True
+            pygame.mixer.music.play(10 ** 8)
+        self._music = not self._music
 
     def switch_sounds(self):
-        self._sounds = not self._sounds
+        switch_sounds()
 
     def reset(self, level=1):
         pygame.mixer.music.stop()
@@ -308,7 +311,7 @@ class Game:  # Main class
             y2 = y1 + dy * velocity / max(self.clock.get_fps(), 5)
         if isinstance(sprite, Projectile) and type(sprite) is not SightChecker:
             for col in pygame.sprite.spritecollide(sprite, self.sprite_groups[PROJECTILES], False):
-                if col != sprite:
+                if col != sprite and not isinstance(col, SightChecker):
                     col.die()
                     sprite.die()
             for spr in sprite.collision(self.sprite_groups[ENTITIES]):
@@ -342,7 +345,7 @@ class Game:  # Main class
             dy = 0
         else:
             dy = sin(angle)
-        if isinstance(sprite, Projectile) and sprite.mods & TRANSPARENT:
+        if isinstance(sprite, Projectile) and TRANSPARENT in sprite.mods:
             force_move = True
         self.move(sprite, dx, dy, velocity, force_move)
 
@@ -351,11 +354,11 @@ class Game:  # Main class
         enemy_type((self.sprite_groups[ENTITIES], self.sprite_groups[ALL]), pos, **kwargs)
 
     def kill(self, sprite):
-        for _ in range(25):
+        for _ in range(10):
             Particle((self.sprite_groups[PARTICLES], self.sprite_groups[ALL]), sprite.get_pos(), sprite.particle_color,
                      10, 10, 10, 10)
         sprite.kill()
-        if self._sounds:
+        if is_sounds():
             choice(self.death_sounds).play()
 
     def update_sprites(self):
@@ -375,8 +378,6 @@ class Game:  # Main class
         screen.set_colorkey((255, 255, 255))
         r = 1000
         pos = tuple(map(round, self.camera.apply_pos(self.player.get_pos(), True)))
-
-        #self.next_level_sound.play()
         while r > 0:
             pygame.draw.circle(screen, (255, 255, 255), pos, r)
             self.render_sprites()
@@ -500,11 +501,32 @@ class Game:  # Main class
                             self.change_camera_target(self.camera.apply_pos(event.pos))
                         else:
                             self.player.start_attacking()
-                if event.button == pygame.BUTTON_RIGHT:
-                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                        self.delete_enemy(self.camera.apply_pos(event.pos))
-                    else:
-                        self.player.try_range_attack(self.camera.apply_pos(event.pos))
+                if not self.conditions[PAUSED]:
+                    if event.button == pygame.BUTTON_RIGHT:
+                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                            self.delete_enemy(self.camera.apply_pos(event.pos))
+                        else:
+                            self.player.try_range_attack(self.camera.apply_pos(event.pos))
+                    elif event.button == pygame.BUTTON_LEFT:
+                        self.player.try_attack(self.camera.apply_pos(event.pos))
+                        rect = pygame.rect.Rect(0, 0, 70, 90)
+                        rect.center = self.player.rect.center
+                        if abs(self.player.look_angle) >= 90:
+                            rect.x -= 40
+                        else:
+                            rect.x += 40
+                        sprite = pygame.sprite.Sprite()
+                        sprite.rect = rect
+                        collided = pygame.sprite.spritecollide(sprite, self.sprite_groups[ENTITIES], False)
+                        for i in collided:
+                            if i != self.player:
+                                i.hurt(round(self.player.damage), self.player.get_pos())
+                                i.push(i.x - self.player.x, i.y - self.player.y, 15)
+                        collided = pygame.sprite.spritecollide(sprite, self.sprite_groups[PROJECTILES], False)
+                        for i in collided:
+                            if i.team != self.player.team:
+                                i.die()
+                        self.terrain.collide(sprite)
 
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT:

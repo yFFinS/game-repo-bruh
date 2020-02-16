@@ -3,8 +3,8 @@ from random import randint
 from functions import *
 from constants import *
 
-PLAYER_TEXTURES = 'player.png'
-ENEMY_TEXTURES = {1: 'enemy1.png'}
+PLAYER_TEXTURES = 'player1.png'
+ENEMY_TEXTURES = {1: 'mage1.png'}
 
 
 class Entity(pygame.sprite.Sprite):  # Used to create and control entities
@@ -42,8 +42,11 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
                        'hp_regen': Timer(1, target=self.hp_regen, mode=1)}
         self.conditions[CANPATHFIND] = True
         self.conditions[WAITING] = True
+        self.conditions[ATTACK] = False
         self.timers['wait'].start()
         self.timers['hp_regen'].start()
+        self.cadr = 0
+        self.which_sprite = 1
 
         self.hp_bar = HpBar(groups[-1], self)
         self.hp_bar.update()
@@ -67,6 +70,7 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
         if distance_between(self.get_pos(), self.target.get_pos()) <= 1500:
             self.launch_projectile(self.projectile, self.target)
             self.conditions[CANRANGEATTACK] = False
+            self.conditions[ATTACK] = True
             self.timers['launch_time'].start()
             return True
 
@@ -112,8 +116,6 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
             if timer.is_started():
                 timer.tick()
         self.hp_bar.update()
-        if self.timers['attack_time'].is_started():
-            self.attack()
 
     def rotate(self, angle):  # Rotates self
         self.look_angle += angle
@@ -170,37 +172,89 @@ class Player(Entity):  # Player class
         super().__init__(groups, pos, PLAYER_TEXTURES, (50, 50), 300, 300)
         self.enemies = None
         self.team = -1
+        self.default_damage = 50
+        self.damage = 50
         self.conditions[CANRANGEATTACK] = True
         self.timers['launch_time'].set_default_time(1)
         self.timers['launch_time'].reset()
+        self.player1 = pygame.transform.scale(load_image('player1.png'), (50, 50))
+        self.player2 = pygame.transform.scale(load_image('player2.png'), (50, 50))
+        self.player3 = pygame.transform.scale(load_image('player3.png'), (50, 50))
+        self.player4 = pygame.transform.scale(load_image('player4.png'), (50, 50))
+        self.switch_cadr = 20
+        self.switch_cadr_attack = 10
+        self.he_attack = False
+        self.now_position = (0, 0)
+        self.i_moving = False
 
     def start_attacking(self):
         if not self.timers['attack_time'].is_started():
             self.timers['base_attack_time'].start()
             self.timers['attack_time'].args = (self.enemies,)
 
+    def try_attack(self, pos):
+        if not self.he_attack:
+            self.cadr = 0
+            self.he_attack = True
+            self.now_position = pos
+        if not self.cadr and self.he_attack:
+            self.image = self.player4
+            self.default_image = self.image
+        if self.cadr == self.switch_cadr_attack:
+            self.cadr = 0
+            self.he_attack = False
+
     def try_range_attack(self, pos):
         if not self.conditions[CANRANGEATTACK]:
-            return
+            return False
         self.launch_projectile(0, pos)
         self.conditions[CANRANGEATTACK] = False
         self.timers['launch_time'].start()
         return True
 
     def update(self):
+        if not self.i_moving:
+            self.image = self.player1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 1 and not self.he_attack:
+            self.image = self.player2
+            self.which_sprite = 2
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 2 and not self.he_attack:
+            self.image = self.player3
+            self.which_sprite = 3
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 3 and not self.he_attack:
+            self.image = self.player2
+            self.which_sprite = 4
+            self.cadr = 0
+            self.default_image = self.image
+        elif self.cadr == self.switch_cadr and self.which_sprite == 4 and not self.he_attack:
+            self.image = self.player1
+            self.which_sprite = 1
+            self.cadr = 0
+            self.default_image = self.image
+        if self.he_attack:
+            self.try_attack(self.now_position)
+        self.cadr += 1
         super().update()
         self.timers['hp_regen'].set_default_time(self.hp / self.get_max_hp())
         self.passive_regen = max(1, (self.get_max_hp() - self.hp) / secs(0.5))
         self.velocity = self.default_velocity * (2 - (self.hp / self.get_max_hp()))
+        self.damage = self.default_damage * (2 - self.hp / self.get_max_hp())
 
 
 class Enemy(Entity):  # Enemy class
     def __init__(self, *args, player=None, damage=50, level=1, **kwargs):
         super().__init__(*args, **kwargs)
         self.player = player
-        self.fov = 60
+        self.fov = 120
         self.player_pos = self.player.get_pos()
-        self.view_range = 600
+        self.view_range = 800
         self.target = self.player
         self.timers['player_near'] = Timer(3, target=self.change_condition, args=(FIGHTING, True))
         self.timers['wait'].start()
@@ -212,9 +266,10 @@ class Enemy(Entity):  # Enemy class
         self.hp_bar.max_hp = self.hp
         self.hp_bar.update()
         self.velocity = self.default_velocity + 2 * level
+        self.stop = 0
 
     def check_for_player(self):  # Checks for player in self line-of-sight
-        if not self.conditions[FIGHTING]:
+        if self.conditions[FIGHTING]:
             return
         if distance_between(self.player.get_pos(), self.get_pos()) <= 50:
             if not self.timers['player_near'].is_started():
@@ -246,6 +301,17 @@ class Enemy(Entity):  # Enemy class
             if self.conditions[FIGHTING]:
                 self.look_angle = degrees(angle_between(self.get_pos(), self.target.get_pos()))
                 self.rotate(0)
+                self.attack_now()
+            else:
+                self.ai()
+
+    def attack_now(self):
+        if self.conditions[ATTACK]:
+            if self.stop == 70:
+                self.conditions[ATTACK] = False
+                self.stop = 0
+            self.stop += 1
+        else:
             self.ai()
 
     def ai(self):
@@ -272,13 +338,12 @@ class Mage1(Enemy):
 
     def ai(self):
         if self.conditions[FIGHTING]:
-            attacked = self.try_range_attack()
-            if not attacked:
-                if distance_between(self.get_pos(), self.target.get_pos()) > 600:
-                    self.move_to_target()
-                if distance_between(self.get_pos(), self.target.get_pos()) < 250:
-                    self.move_from(self.target.get_pos())
-
+            if distance_between(self.get_pos(), self.target.get_pos()) > 600:
+                self.move_to_target()
+            else:
+                self.try_range_attack()
+            if distance_between(self.get_pos(), self.target.get_pos()) < 250:
+                self.move_from(self.target.get_pos())
         else:
             if not self.conditions[WAITING]:
                 self.move_forward()

@@ -5,6 +5,9 @@ from random import choice
 from constants import FPS
 
 
+sounds_enabled = True
+
+
 def load_image(name):
     image = pygame.image.load(os.path.join('images', name)).convert_alpha()
     return image
@@ -32,6 +35,16 @@ def load_music(name):
 
 def secs(time):
     return time * FPS
+
+
+def is_sounds():
+    return sounds_enabled
+
+
+def switch_sounds():
+    global sounds_enabled
+    sounds_enabled = not sounds_enabled
+    print(sounds_enabled)
 
 
 class ColorMask(pygame.sprite.GroupSingle):
