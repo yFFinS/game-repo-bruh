@@ -1,6 +1,6 @@
 import pygame
 
-pygame.mixer.pre_init(44100, -16, 1, 1024)
+pygame.mixer.pre_init(44100, -16, 6, 4096)
 pygame.mixer.init()
 pygame.init()
 pygame.display.set_caption('Game')
@@ -31,7 +31,6 @@ class Game:  # Main class
         self.clock = pygame.time.Clock()
         self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
         load_music('music.mp3')
-        hurt_sound = load_sound('bruh.mp3')
         pygame.mixer.music.play(10 ** 8)
 
         self.sprite_groups = None
@@ -354,10 +353,6 @@ class Game:  # Main class
             choice(self.death_sounds).play()
 
     def update_sprites(self):
-        while len(self.sprite_groups[PARTICLES]) > 100:
-            for spr in self.sprite_groups[PARTICLES]:
-                spr.kill()
-                break
         for sprite in self.sprite_groups[ALL]:
             self.camera.apply_sprite(sprite)
         self.sprite_groups[ALL].update()
@@ -450,8 +445,6 @@ class Game:  # Main class
         font = pygame.font.Font(None, 30)
         lines = list()
         lines.append(font.render('FPS: ' + str(int(self.clock.get_fps())), True, pygame.Color('red')))
-        lines.append(font.render('Rect: ' + str(self.player.rect), True, pygame.Color('red')))
-        lines.append(font.render('HP: ' + str(self.player.hp), True, pygame.Color('red')))
         for num, line in enumerate(lines):
             self.screen.blit(line, (10, num * 30 + 10))
 
@@ -486,19 +479,9 @@ class Game:  # Main class
                 if event.button == pygame.BUTTON_LEFT:
                     if self.conditions[INMENU]:
                         self.menu.click(event.pos, event.type, event.button)
-                    else:
-                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                            self.create_enemy(self.camera.apply_pos(event.pos), player=self.player)
-                        elif pygame.key.get_mods() & pygame.KMOD_CTRL:
-                            self.change_camera_target(self.camera.apply_pos(event.pos))
-                        else:
-                            self.player.start_attacking()
                 if not self.conditions[PAUSED]:
                     if event.button == pygame.BUTTON_RIGHT:
-                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                            self.delete_enemy(self.camera.apply_pos(event.pos))
-                        else:
-                            self.player.try_range_attack(self.camera.apply_pos(event.pos))
+                        self.player.try_range_attack(self.camera.apply_pos(event.pos))
                     elif event.button == pygame.BUTTON_LEFT:
                         self.player.try_attack(self.camera.apply_pos(event.pos))
                         rect = pygame.rect.Rect(0, 0, 70, 90)

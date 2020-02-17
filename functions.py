@@ -1,6 +1,7 @@
 import pygame
 import os
-from math import sqrt, atan2
+from math import sqrt, atan2, sin, cos, degrees, radians
+from random import choice
 from constants import FPS
 
 
@@ -25,7 +26,6 @@ def distance_between(pos1, pos2):
 
 
 def load_sound(name):
-    print(os.path.join('sounds', '\\' + name))
     return pygame.mixer.Sound(os.path.join('sounds', name))
 
 
@@ -43,6 +43,8 @@ def is_sounds():
 
 def switch_sounds():
     global sounds_enabled
+    if sounds_enabled:
+        pygame.mixer.stop()
     sounds_enabled = not sounds_enabled
 
 

@@ -5,6 +5,7 @@ import pygame
 from constants import *
 from entities import ENEMY_IDS, Enemy
 from functions import load_image
+from projectiles import SightChecker
 
 
 PRESETS = {}
@@ -166,13 +167,14 @@ class Terrain:
                 self.obst_grid[y][x] is not None and BREAKABLE in self.obst_grid[y][x].mods]
 
     def collide(self, sprite):
-        broken = pygame.sprite.spritecollide(sprite, self.breakables, False)
-        for spr in broken:
-            x, y = spr.rect.topleft
-            x //= TILE_SIZE
-            y //= TILE_SIZE
-            self.chunks[x // 16][y // 16].change_tile(x % 16, y % 16, self.bg_grid[x][y])
-            spr.kill()
+        if not isinstance(sprite, SightChecker):
+            broken = pygame.sprite.spritecollide(sprite, self.breakables, False)
+            for spr in broken:
+                x, y = spr.rect.topleft
+                x //= TILE_SIZE
+                y //= TILE_SIZE
+                self.chunks[x // 16][y // 16].change_tile(x % 16, y % 16, self.bg_grid[x][y])
+                spr.kill()
 
         is_collided = pygame.sprite.spritecollideany(sprite, self.walls) is not None
         return is_collided

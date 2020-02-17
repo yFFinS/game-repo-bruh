@@ -8,6 +8,7 @@ ENEMY_TEXTURES = {1: 'mage1.png'}
 
 
 class Entity(pygame.sprite.Sprite):  # Used to create and control entities
+    hurt_sound = load_sound('hurt.wav')
 
     def __init__(self, groups, pos, textures_dir, size, velocity=30, hp=100):  # Init
         super().__init__(*groups)

@@ -42,7 +42,7 @@ class Projectile(pygame.sprite.Sprite):
         if not isinstance(self, SightChecker):
             self.counter += 1
             if self.counter % 4 == 0:
-                self.signals[PARTICLE] = (self.get_pos(), self.particle_color, 20, 20, random.randint(-20, 20), random.randint(-20, 20), '', 1)
+                self.signals[PARTICLE] = (self.get_pos(), self.particle_color, 20, 20, round(40 * random.random() - 20), round(40 * random.random() - 20), '', 1)
                 self.counter = 0
 
     def move(self):
@@ -109,7 +109,8 @@ class Skull(HomingProjectile):
 
     def __init__(self, groups, damage_amp=1, team=0):
         super().__init__(groups, PROJECTILE_TEXTURES[1], (60, 60), 50, 10, 250 * damage_amp, team)
-        self.attack_sound = load_sound('skull_attack.wav')
+        self.shot_sound = load_sound('skull_attack.wav')
+        self.shot_sound.play()
         self.impact_sound = load_sound('skull_hit.wav')
         self.mods = {TRANSPARENT}
 
