@@ -212,7 +212,7 @@ class Player(Entity):  # Player class
     def try_range_attack(self, pos):
         if not self.conditions[CANRANGEATTACK]:
             return False
-        self.launch_projectile(0, pos)
+        self.launch_projectile(2, pos)
         self.conditions[CANRANGEATTACK] = False
         self.timers['launch_time'].start()
         return True
