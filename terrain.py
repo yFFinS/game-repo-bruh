@@ -241,7 +241,7 @@ class Terrain:
                 cur_chamber = self.chambers[y1][x1].grid
                 for y2 in range(len(cur_chamber)):
                     for x2 in range(len(cur_chamber[0])):
-                        if cur_chamber[y2][x2] == -1:
+                        if cur_chamber[y2][x2] == 0:
                             continue
                         if cur_chamber[y2][x2] == 1:
                             self.obst_grid[y1 * len(cur_chamber) + y2][x1 * len(cur_chamber[0]) + x2] \
@@ -441,7 +441,7 @@ class Chamber:
         possible_spawns = []
         for i in range(len(self.grid)):
             for j in range(len(self.grid[i])):
-                if self.grid[i][j] == -1:
+                if self.grid[i][j] == 0:
                     possible_spawns.append((j, i))
         amount = min(random.randint(6, 12), len(possible_spawns) - 1)
         while len(self.entities) != amount:
@@ -449,8 +449,8 @@ class Chamber:
             possible_spawns.remove(r)
             x, y = r
             self.entities[(TILE_SIZE * x + TILE_SIZE // 2, TILE_SIZE * y + TILE_SIZE // 2)] = random.choice(ENEMY_IDS)
-        self.player_spawn = random.choice(possible_spawns)
-
+        if possible_spawns:
+            self.player_spawn = random.choice(possible_spawns)
 
 
 TILE_TEXTURES = {0: load_image('floor1.jpg'), 1: load_image('wall1.jpg'), 2: load_image('box1.jpg'),

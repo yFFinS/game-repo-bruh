@@ -8,6 +8,7 @@ ENEMY_TEXTURES = {1: 'mage1.png'}
 
 
 class Entity(pygame.sprite.Sprite):  # Used to create and control entities
+
     def __init__(self, groups, pos, textures_dir, size, velocity=30, hp=100):  # Init
         super().__init__(*groups)
         self.signals = {k: None for k in range(60, 70)}
@@ -58,9 +59,6 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
     def hp_regen(self):
         self.hp = min(self.hp + self.passive_regen, self.get_max_hp())
 
-    def attack(self, target=None):
-        pass
-
     def push(self, dx, dy, strength):
         self.signals[PUSH] = (dx, dy, strength)
 
@@ -91,11 +89,11 @@ class Entity(pygame.sprite.Sprite):  # Used to create and control entities
     def is_sleep(self):  # Returns True if self is sleeping
         return self.timers['sleep_timer'].is_started()
 
-    def hurt(self, damage, pos):  # Gets damaged
+    def hurt(self, damage, pos=(0, 0)):  # Gets damaged
         if self.conditions[INVULNERABILITY] or damage <= 0:
             return
-        if pos is None:
-            pos = self.get_pos()
+        if is_sounds():
+            Entity.hurt_sound.play()
         self.hp = max(0, self.hp - damage)
         self.signals[PARTICLE] = (self.get_pos(), (200, 0, 0), 10, -40, 0, 0, str(damage), 1)
         if self.hp == 0:
@@ -187,6 +185,7 @@ class Player(Entity):  # Player class
         self.he_attack = False
         self.now_position = (0, 0)
         self.i_moving = False
+        self.attack_sound = load_sound('attack.wav')
 
     def start_attacking(self):
         if not self.timers['attack_time'].is_started():
@@ -201,6 +200,8 @@ class Player(Entity):  # Player class
             self.image = self.player4
             self.default_image = self.image
             self.which_sprite = 0
+            if is_sounds():
+                self.attack_sound.play()
         if self.cadr_attack == self.switch_cadr_attack:
             self.cadr_attack = 0
             self.he_attack = False

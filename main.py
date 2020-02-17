@@ -31,6 +31,7 @@ class Game:  # Main class
         self.clock = pygame.time.Clock()
         self.death_sounds = [load_sound('death' + str(i + 1) + '.wav') for i in range(1)]
         load_music('music.mp3')
+        hurt_sound = load_sound('bruh.mp3')
         pygame.mixer.music.play(10 ** 8)
 
         self.sprite_groups = None

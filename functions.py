@@ -1,12 +1,11 @@
 import pygame
 import os
-from math import sqrt, atan2, sin, cos, degrees, radians
-from random import choice
+from math import sqrt, atan2
 from constants import FPS
 
 
 sounds_enabled = True
-
+pygame.mixer.init()
 
 def load_image(name):
     image = pygame.image.load(os.path.join('images', name)).convert_alpha()
@@ -26,6 +25,7 @@ def distance_between(pos1, pos2):
 
 
 def load_sound(name):
+    print(os.path.join('sounds', '\\' + name))
     return pygame.mixer.Sound(os.path.join('sounds', name))
 
 
